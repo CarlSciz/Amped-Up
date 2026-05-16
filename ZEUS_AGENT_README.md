@@ -1,6 +1,6 @@
-# Zeus AI Agent - ANSI O5.1-2022 Expert
+# Zeus AI Agent - ANSI O5.1-2023 Expert
 
-Zeus is an intelligent conversational AI agent that understands and explains ANSI O5.1-2022 Wood Poles, Specifications and Dimensions. He can answer questions, provide recommendations, perform calculations, and help users understand utility pole standards.
+Zeus is an intelligent conversational AI agent that understands and explains ANSI O5.1-2023 Wood Poles, Specifications and Dimensions. He can answer questions, provide recommendations, perform calculations, and help users understand utility pole standards.
 
 ## Overview
 
@@ -11,7 +11,7 @@ Zeus provides:
 - **Engineering calculations** for loads, decay, and more
 - **Recommendations** for pole selection
 - **Comparisons** between different pole classes
-- **Explanations** of ANSI O5.1-2022 concepts
+- **Explanations** of ANSI O5.1-2023 concepts
 
 ## Features
 
@@ -28,7 +28,7 @@ Zeus handles multiple types of queries:
 - **Comparison**: Compare different pole classes
 - **Recommendation**: Get pole suggestions for requirements
 - **Calculation**: Perform engineering calculations
-- **Explanation**: Learn about ANSI O5.1-2022 concepts
+- **Explanation**: Learn about ANSI O5.1-2023 concepts
 - **Compliance**: Check pole compliance (via analyzer integration)
 
 ### 3. Context Awareness
@@ -215,7 +215,7 @@ Content-Type: application/json
 
 Zeus has deep knowledge of:
 
-### ANSI O5.1-2022 Standard
+### ANSI O5.1-2023 Standard
 - Complete understanding of the standard
 - All pole classes and their specifications
 - Load capacity requirements
@@ -395,7 +395,7 @@ capabilities = zeus.get_capabilities()
         "Determine embedment depth"
     ],
     "explanations": [
-        "Explain ANSI O5.1-2022 concepts",
+        "Explain ANSI O5.1-2023 concepts",
         "Describe pole classes",
         "Clarify specifications",
         "Provide best practices"
@@ -461,12 +461,12 @@ Zeus handles various scenarios gracefully:
 ## Performance
 
 - **Response Time**: < 100ms for most queries
-- **Accuracy**: Based on ANSI O5.1-2022 specifications
+- **Accuracy**: Based on ANSI O5.1-2023 specifications
 - **Coverage**: All pole classes and lengths in standard
 
 ## Limitations
 
-- Zeus provides guidance based on ANSI O5.1-2022
+- Zeus provides guidance based on ANSI O5.1-2023
 - Always consult licensed engineers for critical decisions
 - Local codes and regulations may have additional requirements
 - Environmental factors may require adjustments
@@ -485,14 +485,14 @@ Potential improvements:
 
 For questions about Zeus:
 1. Check example conversations above
-2. Review ANSI O5.1-2022 documentation
+2. Review ANSI O5.1-2023 documentation
 3. Test with example questions from `/api/zeus/examples`
 
 ## License
 
-Zeus is part of the ANSI O5.1-2022 Pole Analyzer system.
+Zeus is part of the ANSI O5.1-2023 Pole Analyzer system.
 Always consult with licensed professional engineers for critical infrastructure decisions.
 
 ---
 
-**Zeus**: "I'm here to help you understand and work with ANSI O5.1-2022 Wood Poles specifications. Ask me anything!"
+**Zeus**: "I'm here to help you understand and work with ANSI O5.1-2023 Wood Poles specifications. Ask me anything!"

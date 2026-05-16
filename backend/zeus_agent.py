@@ -1,7 +1,7 @@
 """
-Zeus AI Agent - ANSI O5.1-2022 Wood Poles Expert
+Zeus AI Agent - ANSI O5.1-2023 Wood Poles Expert
 An intelligent conversational agent that understands and explains
-ANSI O5.1-2022 Wood Poles, Specifications and Dimensions
+ANSI O5.1-2023 Wood Poles, Specifications and Dimensions
 """
 
 from typing import Dict, List, Optional, Tuple
@@ -49,11 +49,11 @@ class ZeusResponse:
 
 class ZeusAgent:
     """
-    Zeus - AI Agent for ANSI O5.1-2022 Wood Poles
+    Zeus - AI Agent for ANSI O5.1-2023 Wood Poles
     
     Zeus is an expert system that understands utility pole specifications,
     can answer questions, provide recommendations, and explain concepts
-    related to ANSI O5.1-2022 standards.
+    related to ANSI O5.1-2023 standards.
     """
     
     def __init__(self):
@@ -61,10 +61,10 @@ class ZeusAgent:
         self.knowledge_base = self._build_knowledge_base()
     
     def _build_knowledge_base(self) -> Dict[str, str]:
-        """Build knowledge base about ANSI O5.1-2022"""
+        """Build knowledge base about ANSI O5.1-2023"""
         return {
-            "standard": """ANSI O5.1-2022 is the American National Standard for Wood Poles - 
-            Specifications and Dimensions. It defines the requirements for wood utility poles 
+            "standard": """ANSI O5.1-2023 is the American National Standard for Wood Poles -
+            Specifications and Dimensions. It defines the requirements for wood utility poles
             used in electrical distribution and transmission systems.""",
             
             "pole_classes": """Pole classes range from H6 (lightest) to H1 (heavy) for H-class poles, 
@@ -109,7 +109,7 @@ class ZeusAgent:
     
     def ask(self, question: str, context: Optional[Dict] = None) -> ZeusResponse:
         """
-        Ask Zeus a question about ANSI O5.1-2022
+        Ask Zeus a question about ANSI O5.1-2023
         
         Args:
             question: User's question
@@ -162,7 +162,7 @@ class ZeusAgent:
                     confidence=0.9
                 )
         
-        # General ANSI O5.1-2022 explanation
+        # General ANSI O5.1-2023 explanation
         if "ansi" in question_lower or "o5.1" in question_lower or "standard" in question_lower:
             return ZeusResponse(
                 query_type=QueryType.EXPLANATION,
@@ -193,7 +193,7 @@ class ZeusAgent:
         
         return ZeusResponse(
             query_type=QueryType.GENERAL,
-            answer="I'm Zeus, your ANSI O5.1-2022 expert. I can help with pole specifications, "
+            answer="I'm Zeus, your ANSI O5.1-2023 expert. I can help with pole specifications, "
                    "load calculations, compliance checking, and recommendations. What would you like to know?",
             suggestions=[
                 "What are the pole classes?",
@@ -537,7 +537,7 @@ Decay depth: {decay} inches
         """Handle general questions"""
         return ZeusResponse(
             query_type=QueryType.GENERAL,
-            answer="I'm Zeus, your ANSI O5.1-2022 expert. I can help you with:\n\n"
+            answer="I'm Zeus, your ANSI O5.1-2023 expert. I can help you with:\n\n"
                    "• Pole specifications and dimensions\n"
                    "• Load capacity calculations\n"
                    "• Pole class comparisons\n"
@@ -581,7 +581,7 @@ Decay depth: {decay} inches
                 "Determine embedment depth"
             ],
             "explanations": [
-                "Explain ANSI O5.1-2022 concepts",
+                "Explain ANSI O5.1-2023 concepts",
                 "Describe pole classes",
                 "Clarify specifications",
                 "Provide best practices"
