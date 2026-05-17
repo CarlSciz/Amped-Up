@@ -38,7 +38,7 @@ export const EMPTY_DASHBOARD_FILTERS: DashboardFilterState = {
 function mapSummary(s: JsonObj): DashboardSummary {
   return {
     totalPoles: s.total_poles as number,
-    newSinceLastScan: s.new_since_last_scan as number,
+    recentCriticals: s.recent_criticals as number,
     critical: s.critical as number,
     high: s.high as number,
     medium: s.medium as number,
@@ -328,6 +328,7 @@ export function useDashboard() {
             ...prev,
             summary: {
               ...prev.summary,
+              recentCriticals: d.recent_criticals as number,
               critical: d.critical as number,
               high: d.high as number,
               medium: d.medium as number,

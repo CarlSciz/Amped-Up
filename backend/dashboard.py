@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import orm_models as dbm
@@ -210,6 +212,43 @@ def get_osm_poles_geojson() -> FileResponse:
     if not GEOJSON_PATH.exists():
         raise HTTPException(status_code=404, detail="DTE OSM pole GeoJSON not found")
     return FileResponse(GEOJSON_PATH, media_type="application/geo+json", filename=GEOJSON_PATH.name)
+
+
+@router.get("/nearest-pole")
+def get_nearest_pole(
+    lat: float = Query(..., description="User latitude"),
+    lon: float = Query(..., description="User longitude"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Return the pole closest to the given coordinates using a flat-earth approximation."""
+    cos_lat = math.cos(math.radians(lat))
+    row = db.execute(
+        select(
+            dbm.Pole.id,
+            dbm.Pole.latitude,
+            dbm.Pole.longitude,
+            dbm.Pole.severity,
+            dbm.Pole.classification,
+            dbm.Pole.owner,
+            dbm.Pole.circuit,
+            dbm.Pole.address,
+        ).order_by(
+            (dbm.Pole.latitude - lat) * (dbm.Pole.latitude - lat)
+            + (dbm.Pole.longitude - lon) * (dbm.Pole.longitude - lon) * cos_lat * cos_lat
+        ).limit(1)
+    ).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="No poles found")
+    return {
+        "pole_id":        row.id,
+        "lat":            row.latitude,
+        "lon":            row.longitude,
+        "severity":       row.severity,
+        "classification": row.classification,
+        "owner":          row.owner,
+        "circuit":        row.circuit,
+        "address":        row.address,
+    }
 
 
 @router.get("/reports/{report_id}/notes", response_model=list[Note])

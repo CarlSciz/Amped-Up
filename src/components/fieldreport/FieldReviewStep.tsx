@@ -142,10 +142,19 @@ const POLE_TYPES = [
 
 interface FieldReviewStepProps {
   poleId: string;
+  poleMetadata?: PoleMetadata | null;
   photos: CapturedPhoto[];
   location: GpsCoords | null;
+  onPhotoReplace: (index: number, photo: CapturedPhoto) => void;
   onBack: () => void;
   onSubmit: (payload: FieldReportPayload) => Promise<void>;
+}
+
+export interface PoleMetadata {
+  classification?: string;
+  owner?: string;
+  circuit?: string;
+  address?: string;
 }
 
 export interface FieldReportPayload {
@@ -163,17 +172,34 @@ export interface FieldReportPayload {
   ai_analysis: AiFinding;
 }
 
-export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBack, onSubmit }: FieldReviewStepProps) {
+export function FieldReviewStep({ poleId: initialPoleId, poleMetadata, photos, location, onPhotoReplace, onBack, onSubmit }: FieldReviewStepProps) {
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const [replacingPhotoIndex, setReplacingPhotoIndex] = useState<number | null>(null);
   const [photoAnalyses, setPhotoAnalyses] = useState<PhotoAnalysis[]>([]);
   const [aiState, setAiState] = useState<'analyzing' | 'done'>('analyzing');
   const [synthesis, setSynthesis] = useState<SynthesisResult | null>(null);
   const [synthesisState, setSynthesisState] = useState<'idle' | 'synthesizing' | 'done'>('idle');
   const [poleId, setPoleId] = useState(initialPoleId);
+  // Sync when the parent resolves the nearest pole after GPS locks
+  useEffect(() => {
+    if (initialPoleId && initialPoleId !== 'Locating…') setPoleId(initialPoleId);
+  }, [initialPoleId]);
   const [poleType, setPoleType] = useState('');
   const [classification, setClassification] = useState('');
   const [owner, setOwner] = useState('');
   const [circuit, setCircuit] = useState('');
   const [address, setAddress] = useState('');
+
+  // Auto-fill pole metadata once when the nearest pole resolves — only fills empty fields
+  const hasAutoFilledRef = useRef(false);
+  useEffect(() => {
+    if (!poleMetadata || hasAutoFilledRef.current) return;
+    hasAutoFilledRef.current = true;
+    if (poleMetadata.classification) setClassification(prev => prev || poleMetadata.classification!);
+    if (poleMetadata.owner)          setOwner(prev => prev || poleMetadata.owner!);
+    if (poleMetadata.circuit)        setCircuit(prev => prev || poleMetadata.circuit!);
+    if (poleMetadata.address)        setAddress(prev => prev || poleMetadata.address!);
+  }, [poleMetadata]);
   const [latStr, setLatStr] = useState(location ? location.lat.toFixed(6) : '');
   const [lonStr, setLonStr] = useState(location ? location.lon.toFixed(6) : '');
   const [severity, setSeverity] = useState<SeverityLevel>('medium');
@@ -387,6 +413,23 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photos.length]);
 
+  function handleReplaceUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || replacingPhotoIndex === null) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      onPhotoReplace(replacingPhotoIndex, {
+        id: crypto.randomUUID(),
+        dataUrl,
+        label: photos[replacingPhotoIndex]?.label ?? '',
+      });
+    };
+    reader.readAsDataURL(file);
+    setReplacingPhotoIndex(null);
+    e.target.value = '';
+  }
+
   async function handleSubmit() {
     setSubmitting(true);
     setError(null);
@@ -441,6 +484,16 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
                   <img src={photo.dataUrl} alt={photo.label} />
                   <span className="fr-photo-lbl">{photo.label}</span>
                   {tagText && <span className="fr-photo-tag" style={{ background: tagColor }}>{tagText}</span>}
+                  <button
+                    className="fr-photo-replace"
+                    aria-label={`Replace ${photo.label} photo`}
+                    onClick={() => { setReplacingPhotoIndex(index); replaceInputRef.current?.click(); }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                  </button>
                 </div>
               );
             })}
@@ -675,6 +728,8 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
         </section>
 
         {error && <p className="sub-error">{error}</p>}
+
+        <input ref={replaceInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleReplaceUpload} />
 
         <button className="fr-submit-btn" onClick={handleSubmit} disabled={submitting}>
           {submitting ? (

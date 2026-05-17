@@ -18,16 +18,20 @@ export function Header({ summary, currentUser, filterControl, searchControl }: H
   return (
     <div className="row" style={{ marginBottom: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div className="logo-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#FBBF24" />
-          </svg>
-        </div>
-        <div>
-          <div className="header-title">Amped Up</div>
-          <div className="muted" style={{ marginTop: 3 }}>
-            Grid sector {summary.sector} · {summary.totalPoles} poles tracked · {summary.openReports} open reports · {displayDate}
+        <a
+          href="/login"
+          style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit' }}
+          aria-label="Go to login"
+        >
+          <div className="logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#FBBF24" />
+            </svg>
           </div>
+          <div className="header-title">Amped Up</div>
+        </a>
+        <div className="muted" style={{ marginTop: 3 }}>
+          Grid sector {summary.sector} · {summary.totalPoles} poles tracked · {summary.openReports} open reports · {displayDate}
         </div>
       </div>
 

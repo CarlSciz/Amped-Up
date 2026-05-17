@@ -24,7 +24,7 @@ export interface ReportAuthor {
 
 export interface DashboardSummary {
   totalPoles: number;
-  newSinceLastScan: number;
+  recentCriticals: number;
   critical: number;
   high: number;
   medium: number;

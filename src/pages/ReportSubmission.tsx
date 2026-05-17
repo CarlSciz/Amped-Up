@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CaptureStep } from '../components/submission/CaptureStep';
 import { ReviewStep } from '../components/submission/ReviewStep';
+import { SafetyModal } from '../components/submission/SafetyModal';
 import { CapturedPhoto, GpsCoords, SubmissionStep, SubmitReportPayload } from '../types/submission';
 import { randomPoleId } from '../utils/randomPole';
 import '../submission.css';
@@ -19,6 +20,7 @@ async function responseError(res: Response): Promise<Error> {
 }
 
 export function ReportSubmission() {
+  const [safetyAcknowledged, setSafetyAcknowledged] = useState(false);
   const [step, setStep] = useState<SubmissionStep>('capture');
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
   const [location, setLocation] = useState<GpsCoords | null>(null);
@@ -27,6 +29,14 @@ export function ReportSubmission() {
 
   function handlePhotoCapture(photo: CapturedPhoto) {
     setPhotos((prev) => [...prev, photo]);
+  }
+
+  function handlePhotoReplace(index: number, photo: CapturedPhoto) {
+    setPhotos((prev) => {
+      const next = [...prev];
+      next[index] = photo;
+      return next;
+    });
   }
 
   async function handleSubmit(payload: SubmitReportPayload) {
@@ -38,6 +48,10 @@ export function ReportSubmission() {
     });
     if (!res.ok) throw await responseError(res);
     setSubmitted(true);
+  }
+
+  if (!safetyAcknowledged) {
+    return <SafetyModal onAcknowledge={() => setSafetyAcknowledged(true)} />;
   }
 
   if (submitted) {
@@ -67,6 +81,7 @@ export function ReportSubmission() {
         photos={photos}
         location={location}
         onPhotoCapture={handlePhotoCapture}
+        onPhotoReplace={handlePhotoReplace}
         onLocationUpdate={setLocation}
         onContinue={() => setStep('review')}
       />
@@ -80,6 +95,7 @@ export function ReportSubmission() {
       location={location}
       description={description}
       onDescriptionChange={setDescription}
+      onPhotoReplace={handlePhotoReplace}
       onBack={() => setStep('capture')}
       onSubmit={handleSubmit}
     />

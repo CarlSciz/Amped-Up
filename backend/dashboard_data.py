@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 
 from sqlalchemy import case, func, select
@@ -227,9 +227,19 @@ def get_summary(db: Session, filters: DashboardFilters | None = None, sector: st
     )
     severity_counts = dict(db.execute(severity_stmt).all())
 
+    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    recent_criticals = db.scalar(
+        select(func.count())
+        .select_from(dbm.Report)
+        .where(
+            dbm.Report.severity == dbm.Severity.CRITICAL,
+            dbm.Report.submitted_at >= one_hour_ago,
+        )
+    ) or 0
+
     return DashboardSummary(
         total_poles=total_poles,
-        new_since_last_scan=0,
+        recent_criticals=recent_criticals,
         critical=severity_counts.get(dbm.Severity.CRITICAL, 0),
         high=severity_counts.get(dbm.Severity.HIGH, 0),
         medium=severity_counts.get(dbm.Severity.MEDIUM, 0),

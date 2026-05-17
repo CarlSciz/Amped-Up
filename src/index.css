@@ -270,6 +270,7 @@ h4 {
 .map-card {
   display: flex;
   flex-direction: column;
+  isolation: isolate;
 }
 
 .map-head {
@@ -631,7 +632,11 @@ h4 {
 
 /* ── Responsive ──────────────────────────────────── */
 
+/* Tablet (810 px–1100 px): stack two-col grids, KPI stays 4-wide */
 @media (max-width: 1100px) {
+  body { padding: 14px; }
+  .wrap { padding: 16px; }
+
   .two-col-wide,
   .two-col-equal,
   .dashboard-main {
@@ -655,6 +660,7 @@ h4 {
   }
 }
 
+/* Mobile (< 640 px): reduce padding, KPI goes 2-wide */
 @media (max-width: 640px) {
   body { padding: 12px; }
   .wrap { padding: 14px; border-radius: 12px; }

@@ -10,19 +10,19 @@ export function KpiCards({ summary }: KpiCardsProps) {
       <div className="card kpi">
         <h4>Total poles</h4>
         <div className="kpi-value">{summary.totalPoles}</div>
-        <div className="muted">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2" aria-hidden="true">
-            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
-          </svg>{' '}
-          {summary.newSinceLastScan} since last scan
-        </div>
+        <div className="muted">Across all sectors</div>
       </div>
 
       <div className="card kpi">
         <span className="kpi-dot" style={{ background: 'var(--crit)' }} />
         <h4 style={{ color: 'var(--crit-tx)' }}>Critical</h4>
         <div className="kpi-value">{summary.critical}</div>
-        <div className="muted">Immediate action</div>
+        <div className="muted">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2" aria-hidden="true">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
+          </svg>{' '}
+          {summary.recentCriticals} in the last hour
+        </div>
       </div>
 
       <div className="card kpi">
