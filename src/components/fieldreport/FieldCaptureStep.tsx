@@ -35,6 +35,7 @@ export function FieldCaptureStep({
 
   const activeSlotIndex = photos.length;
   const allTaken = photos.length >= PHOTO_SLOTS.length;
+  const canContinue = photos.length >= 1;
 
   // Camera
   useEffect(() => {
@@ -213,8 +214,11 @@ export function FieldCaptureStep({
                 {PHOTO_SLOTS[activeSlotIndex]?.label}.
               </strong>{' '}
               {activeSlotIndex === 0 && 'Step back to get the full pole in frame.'}
-              {activeSlotIndex === 1 && 'Move in close to show the damage clearly.'}
-              {activeSlotIndex === 2 && 'Capture the ground contact and any soil disturbance.'}
+              {activeSlotIndex === 1 && 'Move in close to show the damage clearly. '}
+              {activeSlotIndex === 2 && 'Capture the ground contact and any soil disturbance. '}
+              {activeSlotIndex > 0 && (
+                <span style={{ color: '#64748B' }}>Optional — you can continue now.</span>
+              )}
             </div>
           </div>
         )}
@@ -239,7 +243,10 @@ export function FieldCaptureStep({
                   </svg>
                 )}
                 <span className="sub-slot-num">{i + 1}</span>
-                <span className="sub-slot-lbl">{slot.shortLabel}</span>
+                <span className="sub-slot-lbl">
+                  {slot.shortLabel}
+                  {i > 0 && !taken && <span style={{ opacity: 0.45, fontSize: 8 }}> opt</span>}
+                </span>
               </div>
             );
           })}
@@ -248,7 +255,7 @@ export function FieldCaptureStep({
 
       {/* Controls */}
       <div className="sub-controls">
-        {/* Upload button replaces flash */}
+        {/* Left: upload always available (up to max) */}
         <button
           className="sub-ico-btn"
           aria-label="Upload photo"
@@ -263,6 +270,7 @@ export function FieldCaptureStep({
           </svg>
         </button>
 
+        {/* Center: shutter (up to 3) or big Continue (all 3 taken) */}
         {allTaken ? (
           <button className="sub-continue-btn" onClick={onContinue}>
             Continue
@@ -271,12 +279,7 @@ export function FieldCaptureStep({
             </svg>
           </button>
         ) : (
-          <button
-            className="sub-cap-btn"
-            onClick={capture}
-            disabled={!cameraReady || allTaken}
-            aria-label="Take photo"
-          >
+          <button className="sub-cap-btn" onClick={capture} disabled={!cameraReady} aria-label="Take photo">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
               <circle cx="12" cy="13" r="4" />
@@ -284,12 +287,30 @@ export function FieldCaptureStep({
           </button>
         )}
 
-        <button className="sub-ico-btn" onClick={() => setFacingMode((m) => m === 'environment' ? 'user' : 'environment')} aria-label="Flip camera">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="1 4 1 10 7 10" /><polyline points="23 20 23 14 17 14" />
-            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
-          </svg>
-        </button>
+        {/* Right: compact Continue (1–2 photos) or flip (0 photos / all taken) */}
+        {canContinue && !allTaken ? (
+          <button
+            className="sub-continue-btn"
+            style={{ padding: '10px 14px', fontSize: 13 }}
+            onClick={onContinue}
+          >
+            Continue
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+            </svg>
+          </button>
+        ) : (
+          <button
+            className="sub-ico-btn"
+            onClick={() => setFacingMode((m) => m === 'environment' ? 'user' : 'environment')}
+            aria-label="Flip camera"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="1 4 1 10 7 10" /><polyline points="23 20 23 14 17 14" />
+              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleUpload} />

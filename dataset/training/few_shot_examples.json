@@ -1,0 +1,66 @@
+[
+  {
+    "source_file": "ang40c4_01_vegcontact.svg",
+    "pole_type": "ang40c4",
+    "osha_severity": "imminent_danger",
+    "app_severity": "critical",
+    "violations": [
+      "vegetation_contact_primary"
+    ],
+    "nesc_rules": [
+      "NESC 218"
+    ],
+    "weather": null,
+    "multi_defects": [],
+    "description": "Severity: IMMINENT DANGER. Hazard: electrical contact.",
+    "ai_score": 92,
+    "recommendation": "Immediate isolation and emergency repair order required"
+  },
+  {
+    "source_file": "ang40c4_02_anchorexposure.svg",
+    "pole_type": "ang40c4",
+    "osha_severity": "serious",
+    "app_severity": "high",
+    "violations": [
+      "anchor_rod_exposed"
+    ],
+    "nesc_rules": [],
+    "weather": null,
+    "multi_defects": [],
+    "description": "Severity: SERIOUS. Hazard: anchor capacity.",
+    "ai_score": 78,
+    "recommendation": "Schedule corrective action within 30 days; restrict climbing"
+  },
+  {
+    "source_file": "ang40c4_06_polenumberillegible.svg",
+    "pole_type": "ang40c4",
+    "osha_severity": "de_minimis",
+    "app_severity": "low",
+    "violations": [
+      "id_tag_illegible"
+    ],
+    "nesc_rules": [
+      "MPSC R 460.601"
+    ],
+    "weather": null,
+    "multi_defects": [],
+    "description": "Severity: DE MINIMIS. Hazard: asset identification.",
+    "ai_score": 42,
+    "recommendation": "Document and address at next scheduled maintenance visit"
+  },
+  {
+    "source_file": "bank45c3_05_loosehardware.svg",
+    "pole_type": "bank45c3",
+    "osha_severity": "other_than_serious",
+    "app_severity": "medium",
+    "violations": [
+      "loose_bank_hardware"
+    ],
+    "nesc_rules": [],
+    "weather": null,
+    "multi_defects": [],
+    "description": "Severity: OTHER-THAN-SERIOUS. Hazard: hardware integrity.",
+    "ai_score": 58,
+    "recommendation": "Schedule corrective action within 90 days"
+  }
+]

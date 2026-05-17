@@ -1,29 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CapturedPhoto, GpsCoords } from '../../types/submission';
 
+const API_BASE = 'http://127.0.0.1:8000';
+
 type SeverityLevel = 'critical' | 'high' | 'medium' | 'low';
-
-interface AiFinding {
-  severity: SeverityLevel;
-  finding: string;
-  confidence: number;
-  nesc: string;
-  action: string;
-}
-
-// Deterministic pool — picked by photo count so the finding is consistent per session
-const AI_FINDINGS: AiFinding[] = [
-  { severity: 'critical', finding: '12° lean detected — pole has exceeded NESC structural tolerance. Risk of collapse under load.', confidence: 94, nesc: 'NESC 261', action: 'Immediate isolation and emergency repair order required' },
-  { severity: 'high',     finding: 'Insulator tracking marks visible on upper crossarm — elevated flashover risk under wet conditions.', confidence: 82, nesc: 'NESC 277', action: 'Schedule insulator replacement within 30 days' },
-  { severity: 'critical', finding: 'Active conductor contact with vegetation confirmed in overview photo — immediate clearance violation.', confidence: 88, nesc: 'NESC 218', action: 'De-energize circuit and clear vegetation before re-energizing' },
-  { severity: 'high',     finding: 'Transformer oil staining on pole body — dielectric contamination risk.', confidence: 85, nesc: 'OSHA 1910.269', action: 'Test transformer dielectric; replace unit if below spec' },
-  { severity: 'medium',   finding: 'Woodpecker damage detected in upper third of pole — structural integrity may be compromised.', confidence: 71, nesc: 'ANSI O5.1', action: 'Bore and probe test required; treat if sound wood is below spec' },
-  { severity: 'critical', finding: 'Crossarm rot and decay — load-bearing failure risk identified in damage photo.', confidence: 91, nesc: 'NESC 261', action: 'Out-of-service order; do not climb without shoring support' },
-  { severity: 'high',     finding: 'Guy wire corrosion at anchor plate — tensile strength may be significantly reduced.', confidence: 79, nesc: 'NESC 261', action: 'Guy wire replacement required; temporary guy recommended immediately' },
-  { severity: 'medium',   finding: 'Vegetation within 3 ft of conductor clearance zone — approaching NESC minimum.', confidence: 76, nesc: 'NESC 218', action: 'Schedule trim within 60 days per cycle plan' },
-  { severity: 'low',      finding: 'Surface weathering and UV chalk noted — pole within compliance but showing age indicators.', confidence: 67, nesc: 'ANSI O5.1', action: 'Note for next scheduled inspection cycle' },
-  { severity: 'medium',   finding: 'Faded pole ID markings — compliance gap with MPSC inspection requirements.', confidence: 88, nesc: 'MPSC R 460.601', action: 'Re-stencil or re-tag within 90 days' },
-];
 
 const SEV: Record<SeverityLevel, { label: string; color: string; bg: string; border: string }> = {
   critical: { label: 'Critical', color: '#FECACA', bg: '#3F0808', border: '#EF4444' },
@@ -31,6 +11,93 @@ const SEV: Record<SeverityLevel, { label: string; color: string; bg: string; bor
   medium:   { label: 'Medium',   color: '#FDE68A', bg: '#451A03', border: '#FBBF24' },
   low:      { label: 'Low',      color: '#BBF7D0', bg: '#052E16', border: '#22C55E' },
 };
+
+const SEV_ORDER: SeverityLevel[] = ['low', 'medium', 'high', 'critical'];
+
+// Short readable labels for photo overlay tags
+const VIOLATION_TAGS: Record<string, string> = {
+  transformer_oil_leak:               'Oil leak',
+  recloser_oil_leak:                  'Oil leak',
+  crossarm_split:                     'Crossarm split',
+  crossarm_decay:                     'Crossarm decay',
+  pole_lean_excessive:                'Lean',
+  stub_lean_excessive:                'Lean',
+  groundline_decay:                   'Decay',
+  pole_decay_groundline:              'Decay',
+  pole_decay_woodpecker:              'Decay',
+  vegetation_contact_primary:         'Veg. contact',
+  vegetation_contact_phase_a:         'Veg. contact',
+  vegetation_contact_transmission:    'Veg. contact',
+  vegetation_encroachment_primary:    'Veg. encroach.',
+  tall_vegetation_in_row:             'Tall vegetation',
+  guy_strand_corroded:                'Guy corrosion',
+  guy_strand_corrosion:               'Guy corrosion',
+  anchor_pulled:                      'Anchor pulled',
+  anchor_rod_exposed:                 'Anchor exposed',
+  insulator_arc_tracking:             'Arc tracking',
+  polymer_insulator_tracking:         'Arc tracking',
+  insulator_string_shattered:         'Shattered insulator',
+  conductor_strand_break:             'Strand break',
+  open_neutral:                       'Open neutral',
+  downed_conductor_dead_end_failure:  'Downed conductor',
+  dead_end_clamp_failure_phase_c:     'Clamp failure',
+  dead_end_clamp_slipped:             'Clamp slipped',
+  loose_transformer_hardware:         'Loose hardware',
+  loose_bank_hardware:                'Loose hardware',
+  loose_tap_clamp:                    'Loose clamp',
+  splice_thermal_damage:              'Thermal damage',
+  riser_insulation_burned:            'Burned insulation',
+  missing_equipment_ground:           'Missing ground',
+  ground_lead_disconnected:           'Ground disconnect',
+  cracked_bushing:                    'Cracked bushing',
+  jumper_damaged:                     'Damaged jumper',
+  bird_nest_on_equipment:             'Bird nest',
+  bird_nest_on_recloser:              'Bird nest',
+  unauthorized_attachment:            'Unauth. attachment',
+  unauthorized_antenna_attachment:    'Unauth. antenna',
+  id_tag_missing:                     'Missing ID tag',
+  id_tag_illegible:                   'Faded ID tag',
+  pole_id_faded:                      'Faded ID tag',
+  graffiti:                           'Graffiti',
+  none:                               'No issues',
+};
+
+function violationToTag(violations: string[]): string {
+  const first = violations.find(v => v !== 'unknown') ?? 'none';
+  if (first in VIOLATION_TAGS) return VIOLATION_TAGS[first];
+  return first.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function worstSeverity(analyses: PhotoAnalysis[]): SeverityLevel {
+  return analyses.reduce<SeverityLevel>((worst, a) => {
+    return SEV_ORDER.indexOf(a.severity) > SEV_ORDER.indexOf(worst) ? a.severity : worst;
+  }, 'low');
+}
+
+interface PhotoAnalysis {
+  photoId: string;
+  photoLabel: string;
+  tag: string;
+  severity: SeverityLevel;
+  violations: string[];
+  oshaClass: string;
+  recommendation: string;
+  nesc: string[];
+  confidence: number;
+  poweredBy: string;
+  analyzing: boolean;
+  failed: boolean;
+}
+
+interface SynthesisResult {
+  severity: SeverityLevel;
+  violations: string[];
+  summary: string;
+  recommendation: string;
+  nesc: string[];
+  confidence: number;
+  poweredBy: string;
+}
 
 const POLE_TYPES = [
   { id: '', label: 'Unknown / not specified' },
@@ -71,11 +138,11 @@ export interface FieldReportPayload {
 }
 
 export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBack, onSubmit }: FieldReviewStepProps) {
-  // AI analysis state
+  const [photoAnalyses, setPhotoAnalyses] = useState<PhotoAnalysis[]>([]);
   const [aiState, setAiState] = useState<'analyzing' | 'done'>('analyzing');
-  const [aiFinding, setAiFinding] = useState<AiFinding>(AI_FINDINGS[0]);
+  const [synthesis, setSynthesis] = useState<SynthesisResult | null>(null);
+  const [synthesisState, setSynthesisState] = useState<'idle' | 'synthesizing' | 'done'>('idle');
 
-  // Editable fields — pre-filled where possible
   const [poleId, setPoleId] = useState(initialPoleId);
   const [poleType, setPoleType] = useState('');
   const [classification, setClassification] = useState('');
@@ -90,16 +157,189 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Simulate AI analyzing the photos when this step mounts
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelledRef = useRef(false);
+
+  function compressPhoto(dataUrl: string, maxPx = 512, quality = 0.65): Promise<string> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(img.width  * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
+  async function synthesizeResults(succeeded: PhotoAnalysis[], pType: string) {
+    if (succeeded.length < 2) {
+      // Single photo — no synthesis needed, use it directly
+      setSynthesis({
+        severity: succeeded[0].severity,
+        violations: succeeded[0].violations,
+        summary: succeeded[0].recommendation,
+        recommendation: succeeded[0].recommendation,
+        nesc: succeeded[0].nesc,
+        confidence: succeeded[0].confidence,
+        poweredBy: succeeded[0].poweredBy,
+      });
+      setSynthesisState('done');
+      return;
+    }
+
+    setSynthesisState('synthesizing');
+    try {
+      const resp = await fetch(`${API_BASE}/api/dashboard/synthesize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pole_id: initialPoleId,
+          pole_type: pType || null,
+          analyses: succeeded.map(a => ({
+            photo_label: a.photoLabel,
+            severity: a.severity,
+            violations: a.violations,
+            osha_class: a.oshaClass,
+            nesc_rules: a.nesc,
+            recommendation: a.recommendation,
+            ai_score: a.confidence,
+          })),
+        }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const sev = (data.severity as SeverityLevel) ?? 'medium';
+      setSynthesis({
+        severity: sev,
+        violations: data.violations ?? [],
+        summary: data.summary ?? '',
+        recommendation: data.recommendation ?? '',
+        nesc: data.nesc_rules ?? [],
+        confidence: data.ai_score ?? 70,
+        poweredBy: data.powered_by ?? 'watsonx.ai',
+      });
+      setSeverity(sev);
+    } catch {
+      // Fallback: mechanical merge
+      const allViols = [...new Set(succeeded.flatMap(a => a.violations))];
+      const worst = succeeded.reduce((w, a) =>
+        SEV_ORDER.indexOf(a.severity) > SEV_ORDER.indexOf(w.severity) ? a : w
+      );
+      setSynthesis({
+        severity: worst.severity,
+        violations: allViols,
+        summary: `${succeeded.length} photos analyzed. ${worst.recommendation}`,
+        recommendation: worst.recommendation,
+        nesc: [...new Set(succeeded.flatMap(a => a.nesc))],
+        confidence: Math.round(succeeded.reduce((s, a) => s + a.confidence, 0) / succeeded.length),
+        poweredBy: 'merged (synthesis unavailable)',
+      });
+    } finally {
+      setSynthesisState('done');
+    }
+  }
+
+  async function analyzeAllPhotos(desc: string, pType: string) {
+    if (photos.length === 0) return;
+
+    const photosToAnalyze = photos.slice(0, 3);
+    cancelledRef.current = false;
+
+    // Reset synthesis whenever we start a fresh analysis
+    setSynthesis(null);
+    setSynthesisState('idle');
+
+    // Initialise all slots as "analyzing"
+    const initial: PhotoAnalysis[] = photosToAnalyze.map(p => ({
+      photoId: p.id, photoLabel: p.label, tag: '',
+      severity: 'medium', violations: [], oshaClass: 'other_than_serious',
+      recommendation: '', nesc: [], confidence: 0, poweredBy: '',
+      analyzing: true, failed: false,
+    }));
+    setPhotoAnalyses(initial);
+    setAiState('analyzing');
+
+    const results = [...initial];
+
+    for (let i = 0; i < photosToAnalyze.length; i++) {
+      if (cancelledRef.current) break;
+      const photo = photosToAnalyze[i];
+      try {
+        const compressed = await compressPhoto(photo.dataUrl);
+        if (cancelledRef.current) break;
+
+        const resp = await fetch(`${API_BASE}/api/dashboard/analyze`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pole_id: initialPoleId,
+            pole_type: pType || null,
+            description: desc,
+            photo_count: 1,
+            photos: [compressed],
+          }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+
+        const sev = (data.severity as SeverityLevel) ?? 'medium';
+        const viols: string[] = data.violations ?? [];
+        results[i] = {
+          photoId: photo.id,
+          photoLabel: photo.label,
+          tag: violationToTag(viols),
+          severity: sev,
+          violations: viols,
+          oshaClass: data.osha_class ?? 'other_than_serious',
+          recommendation: data.recommendation ?? '',
+          nesc: data.nesc_rules ?? [],
+          confidence: data.ai_score ?? 70,
+          poweredBy: data.powered_by ?? 'watsonx.ai',
+          analyzing: false,
+          failed: false,
+        };
+      } catch {
+        results[i] = { ...results[i], tag: 'Error', analyzing: false, failed: true };
+      }
+
+      if (!cancelledRef.current) setPhotoAnalyses([...results]);
+    }
+
+    if (!cancelledRef.current) {
+      const succeeded = results.filter(r => !r.failed && !r.analyzing);
+      if (succeeded.length) {
+        setSeverity(worstSeverity(succeeded));
+        setAiState('done');
+        // Synthesize all findings into one unified assessment
+        synthesizeResults(succeeded, pType);
+      } else {
+        setAiState('done');
+      }
+    }
+  }
+
+  function scheduleAnalysis(desc: string, pType: string) {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setAiState('analyzing');
+    timerRef.current = setTimeout(() => analyzeAllPhotos(desc, pType), 800);
+  }
+
   useEffect(() => {
-    const finding = AI_FINDINGS[photos.length % AI_FINDINGS.length];
-    const timer = setTimeout(() => {
-      setAiFinding(finding);
-      setSeverity(finding.severity);
-      setAiState('done');
-    }, 1800);
-    return () => clearTimeout(timer);
+    if (photos.length > 0) scheduleAnalysis(description, poleType);
+    return () => {
+      cancelledRef.current = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photos.length]);
+
+  // Derived values used by the photo breakdown section
+  const doneAnalyses = photoAnalyses.filter(a => !a.analyzing && !a.failed);
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -143,55 +383,185 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
 
       <div className="sub-review-body">
 
-        {/* Photos */}
+        {/* ── Photos with overlay tags ───────────────────────────────────────── */}
         <section className="sub-section">
           <h3 className="sub-section-label">Photos ({photos.length})</h3>
-          <div className="sub-review-photos">
-            {photos.map((p) => (
-              <div key={p.id} className="sub-review-photo">
-                <img src={p.dataUrl} alt={p.label} />
-                <span className="sub-review-photo-lbl">{p.label}</span>
-              </div>
-            ))}
+          <div className="fr-photo-grid">
+            {photos.map((p, i) => {
+              const analysis = photoAnalyses[i];
+              const tagColor = analysis && !analysis.analyzing && !analysis.failed
+                ? SEV[analysis.severity].border
+                : '#374151';
+              const tagText = analysis
+                ? analysis.analyzing ? '…' : analysis.tag || 'No issues'
+                : '';
+              return (
+                <div key={p.id} className="fr-photo-thumb">
+                  <img src={p.dataUrl} alt={p.label} />
+                  <span className="fr-photo-lbl">{p.label}</span>
+                  {tagText && (
+                    <span
+                      className="fr-photo-tag"
+                      style={{ background: tagColor }}
+                    >
+                      {tagText}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
 
-        {/* AI recommendation */}
-        <section className="fr-ai-panel">
-          {aiState === 'analyzing' ? (
-            <div className="fr-ai-hdr">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2" className="sub-spin">
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-              </svg>
-              Analyzing {photos.length} photo{photos.length !== 1 ? 's' : ''}…
-            </div>
-          ) : (
-            <>
+        {/* ── AI unified summary panel ───────────────────────────────────────── */}
+        {photos.length > 0 && (
+          <section className="fr-ai-panel">
+            {/* Phase 1: photo-by-photo analysis still running */}
+            {aiState === 'analyzing' ? (
               <div className="fr-ai-hdr">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2" className="fr-spin">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                 </svg>
-                AI analysis · {photos.length} photo{photos.length !== 1 ? 's' : ''} reviewed
-                <span className="fr-ai-confidence">{aiFinding.confidence}% confidence</span>
+                Analyzing {photos.length} photo{photos.length !== 1 ? 's' : ''}…
+                {doneAnalyses.length > 0 && (
+                  <span style={{ fontSize: 11, color: '#60A5FA', marginLeft: 6 }}>
+                    ({doneAnalyses.length} of {photoAnalyses.length} done)
+                  </span>
+                )}
               </div>
-              <p className="fr-ai-finding">{aiFinding.finding}</p>
-              <div className="fr-ai-meta">
-                <span className="fr-ai-nesc">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
-                  </svg>
-                  {aiFinding.nesc}
-                </span>
-                <span className="fr-ai-action">{aiFinding.action}</span>
-              </div>
-              <p className="fr-ai-nudge">
-                Recommended severity: <strong style={{ color: SEV[aiFinding.severity].color }}>{SEV[aiFinding.severity].label}</strong>. Adjust below if needed.
-              </p>
-            </>
-          )}
-        </section>
 
-        {/* Severity */}
+            /* Phase 2: photos done, synthesis in progress */
+            ) : synthesisState === 'synthesizing' ? (
+              <div className="fr-ai-hdr">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2" className="fr-spin">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+                Synthesizing {doneAnalyses.length} findings into one assessment…
+              </div>
+
+            /* Phase 3: synthesis complete */
+            ) : synthesis ? (
+              <>
+                <div className="fr-ai-hdr">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  Unified pole assessment · {doneAnalyses.length} photo{doneAnalyses.length !== 1 ? 's' : ''}
+                  <span className="fr-ai-confidence">{synthesis.confidence}% confidence</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 9, color: '#4B5563' }}>
+                    {synthesis.poweredBy}
+                  </span>
+                </div>
+
+                {/* Narrative summary — the stitched paragraph */}
+                {synthesis.summary && (
+                  <p className="fr-ai-finding">{synthesis.summary}</p>
+                )}
+
+                {/* Combined violations */}
+                {synthesis.violations.filter(v => v !== 'none' && v !== 'unknown').length > 0 && (
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#93C5FD', lineHeight: 1.45 }}>
+                    <strong style={{ color: '#DBEAFE' }}>Violations: </strong>
+                    {synthesis.violations
+                      .filter(v => v !== 'none' && v !== 'unknown')
+                      .map(v => v.replace(/_/g, ' '))
+                      .join(' · ')}
+                  </p>
+                )}
+
+                <div className="fr-ai-meta">
+                  {synthesis.nesc.length > 0 && (
+                    <span className="fr-ai-nesc">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                      </svg>
+                      {synthesis.nesc.join(' · ')}
+                    </span>
+                  )}
+                  {synthesis.recommendation && (
+                    <span className="fr-ai-action">{synthesis.recommendation}</span>
+                  )}
+                </div>
+
+                <p className="fr-ai-nudge">
+                  Recommended severity:{' '}
+                  <strong style={{ color: SEV[synthesis.severity].color }}>
+                    {SEV[synthesis.severity].label}
+                  </strong>.
+                  Adjust below if needed.
+                </p>
+              </>
+            ) : null}
+          </section>
+        )}
+
+        {/* ── Per-photo written breakdown ────────────────────────────────────── */}
+        {photoAnalyses.length > 0 && (
+          <section className="sub-section">
+            <h3 className="sub-section-label">Photo breakdown</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {photoAnalyses.map((a, i) => (
+                <div
+                  key={a.photoId}
+                  className="fr-photo-result"
+                  style={{ borderColor: a.analyzing ? '#1F2937' : SEV[a.severity].border }}
+                >
+                  <div className="fr-photo-result-hdr">
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#CBD5E1' }}>
+                      Photo {i + 1} · {a.photoLabel}
+                    </span>
+                    {a.analyzing ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#64748B' }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2" className="fr-spin">
+                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                        </svg>
+                        Analyzing…
+                      </span>
+                    ) : a.failed ? (
+                      <span style={{ fontSize: 11, color: '#FCA5A5' }}>Analysis failed</span>
+                    ) : (
+                      <span style={{
+                        fontSize: 11, fontWeight: 700,
+                        color: SEV[a.severity].color,
+                        background: SEV[a.severity].bg,
+                        border: `1px solid ${SEV[a.severity].border}`,
+                        borderRadius: 4, padding: '1px 7px',
+                      }}>
+                        {SEV[a.severity].label}
+                      </span>
+                    )}
+                  </div>
+
+                  {!a.analyzing && !a.failed && (
+                    <>
+                      <p style={{ margin: '7px 0 0', fontSize: 12, color: '#BFDBFE', lineHeight: 1.5 }}>
+                        {a.violations.filter(v => v !== 'none' && v !== 'unknown').length > 0
+                          ? a.violations
+                              .filter(v => v !== 'none' && v !== 'unknown')
+                              .map(v => v.replace(/_/g, ' '))
+                              .join(' · ')
+                          : 'No violations detected'}
+                      </p>
+                      <p style={{ margin: '4px 0 0', fontSize: 12, color: '#93C5FD', lineHeight: 1.45 }}>
+                        {a.recommendation}
+                      </p>
+                      {a.nesc.length > 0 && (
+                        <p style={{ margin: '5px 0 0', fontSize: 10, color: '#60A5FA', opacity: 0.85 }}>
+                          {a.nesc.slice(0, 3).join(' · ')}
+                        </p>
+                      )}
+                      <p style={{ margin: '4px 0 0', fontSize: 10, color: '#4B5563' }}>
+                        {a.confidence}% confidence
+                      </p>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Severity ──────────────────────────────────────────────────────── */}
         <section className="sub-section">
           <h3 className="sub-section-label">Severity</h3>
           <div className="fr-sev-row">
@@ -212,7 +582,7 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
           </div>
         </section>
 
-        {/* Pole identity */}
+        {/* ── Pole identity ─────────────────────────────────────────────────── */}
         <section className="sub-section">
           <h3 className="sub-section-label">Pole identity</h3>
           <div className="fr-field-group">
@@ -241,7 +611,7 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
           </div>
         </section>
 
-        {/* Location */}
+        {/* ── Location ──────────────────────────────────────────────────────── */}
         <section className="sub-section">
           <h3 className="sub-section-label">Location</h3>
           {location && (
@@ -266,7 +636,7 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
           </div>
         </section>
 
-        {/* Description */}
+        {/* ── Description ───────────────────────────────────────────────────── */}
         <section className="sub-section">
           <h3 className="sub-section-label">
             Description <span className="sub-section-opt">(optional)</span>
@@ -275,7 +645,10 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
             className="sub-textarea"
             placeholder="Describe what you observed — damage type, extent, any immediate safety hazard…"
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              scheduleAnalysis(e.target.value, poleType);
+            }}
             rows={4}
             maxLength={1000}
           />
@@ -287,7 +660,7 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
         <button className="fr-submit-btn" onClick={handleSubmit} disabled={submitting}>
           {submitting ? (
             <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="sub-spin">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="fr-spin">
                 <path d="M21 12a9 9 0 1 1-6.219-8.56" />
               </svg>
               Submitting…
