@@ -1,4 +1,4 @@
-import { Report, Severity } from '../types';
+import { Report, ReportStatus, Severity } from '../types';
 
 const SEVERITY_COLOR: Record<Severity, string> = {
   critical: 'var(--crit)',
@@ -12,6 +12,13 @@ const SEVERITY_PILL: Record<Severity, { bg: string; color: string; label: string
   high: { bg: 'var(--high-bg)', color: 'var(--high-tx)', label: 'High' },
   medium: { bg: 'var(--med-bg)', color: 'var(--med-tx)', label: 'Medium' },
   low: { bg: '#064E3B', color: '#A7F3D0', label: 'Low' },
+};
+
+const STATUS_LABEL: Record<ReportStatus, string> = {
+  open: 'Open',
+  snoozed: 'Snoozed',
+  approved: 'Approved',
+  dismissed: 'Dismissed',
 };
 
 function timeAgo(iso: string): string {
@@ -30,10 +37,12 @@ interface IncomingReportsProps {
 }
 
 export function IncomingReports({ reports, selectedReportId, onSelectReport }: IncomingReportsProps) {
+  const openCount = reports.filter((report) => report.status === 'open').length;
+
   return (
-    <div className="card" style={{ padding: 14 }}>
+    <div className="card reports-card">
       <div className="row" style={{ marginBottom: 12 }}>
-        <h4>Incoming reports · {reports.length} open</h4>
+        <h4>Reports - {reports.length} total - {openCount} open</h4>
         <span style={{ fontSize: 11.5, color: '#60A5FA', cursor: 'pointer' }}>
           View all{' '}
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
@@ -42,7 +51,7 @@ export function IncomingReports({ reports, selectedReportId, onSelectReport }: I
         </span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="reports-list">
         {reports.map((report) => {
           const p = SEVERITY_PILL[report.severity];
           const isSelected = report.id === selectedReportId;
@@ -70,14 +79,20 @@ export function IncomingReports({ reports, selectedReportId, onSelectReport }: I
               <span className="pill" style={{ background: p.bg, color: p.color }}>
                 {p.label}
               </span>
+              {report.status !== 'open' && (
+                <span className="pill report-status-pill">
+                  {STATUS_LABEL[report.status]}
+                </span>
+              )}
             </button>
           );
         })}
 
         {reports.length === 0 && (
-          <div className="muted" style={{ textAlign: 'center', padding: '20px 0' }}>No open reports</div>
+          <div className="muted" style={{ textAlign: 'center', padding: '20px 0' }}>No reports</div>
         )}
       </div>
     </div>
   );
 }
+

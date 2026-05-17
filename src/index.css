@@ -67,6 +67,13 @@ h4 {
   gap: 12px;
 }
 
+.dashboard-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(340px, 0.9fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
 .two-col-equal {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -80,12 +87,232 @@ h4 {
   margin-bottom: 14px;
 }
 
+.kpi-grid-five {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.filter-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-trigger.active {
+  color: #DBEAFE;
+  border-color: var(--info);
+  background: #0E1B36;
+}
+
+.filter-badge {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--info);
+  color: #EFF6FF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  padding: 0 5px;
+}
+
+.filter-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  width: min(920px, calc(100vw - 48px));
+  padding: 14px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
+}
+
+.filter-menu-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.filter-menu .filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.filter-menu .filter-group {
+  min-width: 0;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.filter-label {
+  color: var(--text-2);
+  font-size: 11px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filter-chip {
+  min-height: 28px;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-2);
+  border-radius: 999px;
+  background: var(--card-2);
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  max-width: 100%;
+}
+
+.filter-chip:hover {
+  border-color: #334155;
+}
+
+.filter-chip.active {
+  color: #DBEAFE;
+  border-color: var(--info);
+  background: #0E1B36;
+}
+
+.filter-chip span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-count {
+  color: var(--text-2);
+  font-size: 10.5px;
+}
+
+.header-search {
+  height: 34px;
+  width: 260px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #1F2937;
+  color: #D1D5DB;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 0 8px 0 10px;
+}
+
+.header-search:focus-within {
+  border-color: var(--info);
+  background: #0E1B36;
+}
+
+.header-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.header-search input::placeholder {
+  color: #94A3B8;
+}
+
+.search-clear {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #94A3B8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.search-clear:hover {
+  color: var(--text);
+  background: #273548;
+}
+
 /* ── Cards ──────────────────────────────────────── */
 
 .card {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 12px;
+}
+
+.map-card,
+.reports-card {
+  min-height: 0;
+  padding: 14px;
+}
+
+.map-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-head {
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.map-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.map-count {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.pole-map {
+  flex: 1;
+  min-height: 520px;
+  height: clamp(520px, 58vh, 760px);
+  border-radius: 8px;
+}
+
+.reports-card {
+  max-height: calc(clamp(520px, 58vh, 760px) + 45px);
+  display: flex;
+  flex-direction: column;
+}
+
+.reports-list {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 2px;
 }
 
 .kpi {
@@ -132,6 +359,12 @@ h4 {
   align-items: center;
   gap: 4px;
   white-space: nowrap;
+}
+
+.report-status-pill {
+  background: #1E293B;
+  color: #CBD5E1;
+  border: 1px solid #334155;
 }
 
 .avatar {
@@ -189,6 +422,34 @@ h4 {
   border-color: #7F1D1D;
 }
 .btn-dng:hover:not(:disabled) { background: #3F0808; }
+
+.severity-select-wrap {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #1F2937;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 0 8px 0 10px;
+  color: var(--text-2);
+  font-size: 11.5px;
+}
+
+.severity-select-wrap select {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.severity-select-wrap select option {
+  background: var(--card);
+  color: var(--text);
+}
 
 /* ── Header ──────────────────────────────────────── */
 
@@ -372,11 +633,25 @@ h4 {
 
 @media (max-width: 1100px) {
   .two-col-wide,
-  .two-col-equal {
+  .two-col-equal,
+  .dashboard-main {
     grid-template-columns: 1fr;
+  }
+  .pole-map {
+    min-height: 430px;
+    height: 54vh;
+  }
+  .reports-card {
+    max-height: none;
   }
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .header-search {
+    width: 210px;
   }
 }
 
@@ -384,6 +659,27 @@ h4 {
   body { padding: 12px; }
   .wrap { padding: 14px; border-radius: 12px; }
   .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .map-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .map-legend {
+    justify-content: flex-start;
+  }
+  .pole-map {
+    min-height: 360px;
+    height: 62vh;
+  }
+  .filter-grid { grid-template-columns: 1fr; }
+  .filter-menu {
+    position: absolute;
+    right: -120px;
+    width: calc(100vw - 24px);
+    margin-top: 8px;
+  }
+  .header-search {
+    width: 170px;
+  }
 }
 
 /* ── Leaflet dark-theme overrides ────────────────────── */

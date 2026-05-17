@@ -6,9 +6,12 @@ import { randomPoleId } from '../utils/randomPole';
 import '../submission.css';
 import '../field-report.css';
 
-const DEFAULT_POLE_ID = new URLSearchParams(window.location.search).get('pole') ?? randomPoleId();
+const DASHBOARD_API = 'http://127.0.0.1:8000/api/dashboard';
 
 export function FieldReport() {
+  const [defaultPoleId, setDefaultPoleId] = useState(
+    () => new URLSearchParams(window.location.search).get('pole') ?? randomPoleId(),
+  );
   const [step, setStep] = useState<'capture' | 'review'>('capture');
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
   const [location, setLocation] = useState<GpsCoords | null>(null);
@@ -21,14 +24,27 @@ export function FieldReport() {
     setPhotos((prev) => [...prev, photo]);
   }
 
+  function resetForAnotherReport() {
+    const routePoleId = new URLSearchParams(window.location.search).get('pole');
+    setDefaultPoleId(routePoleId ?? randomPoleId());
+    setStep('capture');
+    setPhotos([]);
+    setLocation(null);
+    setSubmitted(false);
+    setSubmittedPoleId('');
+    setSubmittedSeverity('');
+    setSubmittedPhotoCount(0);
+  }
+
   async function handleSubmit(payload: FieldReportPayload) {
-    const res = await fetch('/api/dashboard/reports', {
+    const res = await fetch(`${DASHBOARD_API}/reports?cache_bust=${Date.now()}`, {
       method: 'POST',
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(`Server returned ${res.status}`);
-    setSubmittedPoleId(payload.pole_id || DEFAULT_POLE_ID);
+    setSubmittedPoleId(payload.pole_id || defaultPoleId);
     setSubmittedSeverity(payload.severity);
     setSubmittedPhotoCount(payload.photo_count);
     setSubmitted(true);
@@ -55,6 +71,9 @@ export function FieldReport() {
             {' '}· {submittedPhotoCount} photo{submittedPhotoCount !== 1 ? 's' : ''}.
             The ops team will review and prioritize.
           </p>
+          <button type="button" className="fr-done-btn" onClick={resetForAnotherReport}>
+            Submit another report
+          </button>
           <a href="/" className="fr-done-btn">Back to dashboard</a>
         </div>
       </div>
@@ -64,7 +83,7 @@ export function FieldReport() {
   if (step === 'capture') {
     return (
       <FieldCaptureStep
-        poleId={DEFAULT_POLE_ID}
+        poleId={defaultPoleId}
         photos={photos}
         location={location}
         onPhotoCapture={handlePhotoCapture}
@@ -76,7 +95,7 @@ export function FieldReport() {
 
   return (
     <FieldReviewStep
-      poleId={DEFAULT_POLE_ID}
+      poleId={defaultPoleId}
       photos={photos}
       location={location}
       onBack={() => setStep('capture')}

@@ -25,4 +25,5 @@ export interface SubmitReportPayload {
   location: { lat: number; lon: number; accuracy: number } | null;
   description: string;
   photo_count: number;
+  photos: CapturedPhoto[];
 }

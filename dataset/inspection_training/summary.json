@@ -1,0 +1,9 @@
+{
+  "files": [
+    "inspection_records.jsonl",
+    "ibm_messages.jsonl",
+    "dashboard_contracts.jsonl"
+  ],
+  "output_dir": "dataset\\inspection_training",
+  "record_count": 230
+}

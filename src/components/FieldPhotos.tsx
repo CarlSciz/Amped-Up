@@ -80,7 +80,11 @@ export function FieldPhotos({ photos, inspectorLabel }: FieldPhotosProps) {
           const sevStyle = photo.severity ? SEV_STYLE[photo.severity] : null;
           return (
             <div key={photo.id} className="photo-frame">
-              <PhotoPlaceholder index={i} />
+              {photo.imageUrl ? (
+                <img src={photo.imageUrl} alt={photo.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <PhotoPlaceholder index={i} />
+              )}
               <span className="photo-label">{photo.label}</span>
               {photo.severityLabel && sevStyle && (
                 <span className="photo-sev" style={{ background: sevStyle.bg, color: sevStyle.color }}>

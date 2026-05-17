@@ -4,11 +4,15 @@ Integrates MVI computer vision with Zeus agent for pole inspection
 """
 
 import os
-import requests
 import json
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from pathlib import Path
+
+try:
+    import requests
+except ImportError:  # pragma: no cover - allows offline/simulated MVI use before deps are installed.
+    requests = None
 
 from backend.zeus_agent import ZeusAgent
 from backend.pole_inspection_rules import PoleInspectionRules, DefectSeverity
@@ -47,39 +51,39 @@ class MVIConnector:
         """
         return {
             # Equipment defects - map to actual Zeus defect IDs
-            "transformer_corrosion": "equip_oil_leak",
-            "transformer_oil_leak": "equip_oil_leak",
-            "transformer_damage": "equip_xfmr_displaced",
+            "transformer_corrosion": "transformer_oil_leak",
+            "transformer_oil_leak": "transformer_oil_leak",
+            "transformer_damage": "transformer_oil_leak",
             
             # Structural defects
-            "crossarm_decay": "struct_crossarm_decay",
-            "crossarm_split": "struct_crossarm_split",
-            "crossarm_crack": "struct_crossarm_split",
-            "pole_decay": "struct_pole_decay",
-            "pole_lean": "struct_pole_lean",
-            "pole_crack": "struct_pole_crack",
+            "crossarm_decay": "crossarm_decay",
+            "crossarm_split": "crossarm_split",
+            "crossarm_crack": "crossarm_split",
+            "pole_decay": "pole_decay",
+            "pole_lean": "pole_lean",
+            "pole_crack": "pole_decay",
             
             # Hardware defects
-            "hardware_corrosion": "hw_corrosion",
-            "hardware_missing": "hw_missing_ground",
-            "bolt_loose": "hw_loose_hardware",
+            "hardware_corrosion": "loose_hardware",
+            "hardware_missing": "ground_missing",
+            "bolt_loose": "loose_hardware",
             
             # Insulator defects
-            "insulator_damage": "ins_damaged",
-            "insulator_crack": "ins_damaged",
-            "insulator_tracking": "ins_arc_tracking",
+            "insulator_damage": "insulator_damaged",
+            "insulator_crack": "insulator_damaged",
+            "insulator_tracking": "insulator_damaged",
             
             # Vegetation defects
             "vegetation_contact": "veg_contact",
             "vegetation_encroachment": "veg_encroachment",
             
             # Guy wire defects
-            "guy_corrosion": "guy_corroded",
-            "guy_damage": "guy_damaged",
+            "guy_corrosion": "guy_corrosion",
+            "guy_damage": "guy_corrosion",
             
             # Grounding defects
-            "ground_missing": "hw_missing_ground",
-            "ground_damage": "hw_ground_exposed",
+            "ground_missing": "ground_missing",
+            "ground_damage": "ground_missing",
         }
     
     def analyze_pole_image(self, image_path: str, pole_id: str = None) -> Dict:
@@ -127,7 +131,7 @@ class MVIConnector:
         Returns:
             MVI detection results
         """
-        if not self.mvi_url or not self.api_key:
+        if not self.mvi_url or not self.api_key or requests is None:
             # Simulate MVI results for demo/testing
             return self._simulate_mvi_detection(image_path)
         

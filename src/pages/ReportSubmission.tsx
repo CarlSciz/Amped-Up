@@ -6,6 +6,7 @@ import { randomPoleId } from '../utils/randomPole';
 import '../submission.css';
 
 const DEFAULT_POLE_ID = new URLSearchParams(window.location.search).get('pole') ?? randomPoleId();
+const DASHBOARD_API = 'http://127.0.0.1:8000/api/dashboard';
 
 export function ReportSubmission() {
   const [step, setStep] = useState<SubmissionStep>('capture');
@@ -19,8 +20,9 @@ export function ReportSubmission() {
   }
 
   async function handleSubmit(payload: SubmitReportPayload) {
-    const res = await fetch('/api/dashboard/reports', {
+    const res = await fetch(`${DASHBOARD_API}/reports?cache_bust=${Date.now()}`, {
       method: 'POST',
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });

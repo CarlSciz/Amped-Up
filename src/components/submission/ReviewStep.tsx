@@ -34,6 +34,7 @@ export function ReviewStep({
           : null,
         description,
         photo_count: photos.length,
+        photos,
       });
     } catch {
       setError('Submission failed. Check your connection and try again.');

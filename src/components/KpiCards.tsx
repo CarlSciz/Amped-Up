@@ -6,7 +6,7 @@ interface KpiCardsProps {
 
 export function KpiCards({ summary }: KpiCardsProps) {
   return (
-    <div className="kpi-grid">
+    <div className="kpi-grid kpi-grid-five">
       <div className="card kpi">
         <h4>Total poles</h4>
         <div className="kpi-value">{summary.totalPoles}</div>
@@ -37,6 +37,13 @@ export function KpiCards({ summary }: KpiCardsProps) {
         <h4 style={{ color: 'var(--med-tx)' }}>Medium</h4>
         <div className="kpi-value">{summary.medium}</div>
         <div className="muted">Within 90 days</div>
+      </div>
+
+      <div className="card kpi">
+        <span className="kpi-dot" style={{ background: 'var(--low)' }} />
+        <h4 style={{ color: '#A7F3D0' }}>Low</h4>
+        <div className="kpi-value">{summary.low}</div>
+        <div className="muted">Monitor</div>
       </div>
     </div>
   );

@@ -5,73 +5,97 @@ const API_BASE = 'http://127.0.0.1:8000';
 
 type SeverityLevel = 'critical' | 'high' | 'medium' | 'low';
 
+interface AiFinding {
+  severity: SeverityLevel;
+  finding: string;
+  confidence: number;
+  nesc: string;
+  action: string;
+  violation_type_id?: string | null;
+  violation_code?: string | null;
+  violation_family?: string | null;
+  dashboard_title?: string | null;
+  regulations?: string[];
+  evidence_required?: string | null;
+  specifications?: Record<string, string | number | null>;
+}
+
+const FALLBACK_FINDING: AiFinding = {
+  severity: 'medium',
+  finding: 'Submitted photos need reviewer confirmation.',
+  confidence: 40,
+  nesc: 'NESC field review',
+  action: 'Review uploaded images and assign a work priority.',
+  dashboard_title: 'Manual photo review',
+  regulations: ['NESC field review'],
+  evidence_required: 'Review uploaded images, pole context, location, and field notes.',
+  specifications: { measurement_kind: 'manual_review' },
+};
+
 const SEV: Record<SeverityLevel, { label: string; color: string; bg: string; border: string }> = {
   critical: { label: 'Critical', color: '#FECACA', bg: '#3F0808', border: '#EF4444' },
-  high:     { label: 'High',     color: '#FED7AA', bg: '#431407', border: '#F97316' },
-  medium:   { label: 'Medium',   color: '#FDE68A', bg: '#451A03', border: '#FBBF24' },
-  low:      { label: 'Low',      color: '#BBF7D0', bg: '#052E16', border: '#22C55E' },
+  high: { label: 'High', color: '#FED7AA', bg: '#431407', border: '#F97316' },
+  medium: { label: 'Medium', color: '#FDE68A', bg: '#451A03', border: '#FBBF24' },
+  low: { label: 'Low', color: '#BBF7D0', bg: '#052E16', border: '#22C55E' },
 };
 
 const SEV_ORDER: SeverityLevel[] = ['low', 'medium', 'high', 'critical'];
 
-// Short readable labels for photo overlay tags
 const VIOLATION_TAGS: Record<string, string> = {
-  transformer_oil_leak:               'Oil leak',
-  recloser_oil_leak:                  'Oil leak',
-  crossarm_split:                     'Crossarm split',
-  crossarm_decay:                     'Crossarm decay',
-  pole_lean_excessive:                'Lean',
-  stub_lean_excessive:                'Lean',
-  groundline_decay:                   'Decay',
-  pole_decay_groundline:              'Decay',
-  pole_decay_woodpecker:              'Decay',
-  vegetation_contact_primary:         'Veg. contact',
-  vegetation_contact_phase_a:         'Veg. contact',
-  vegetation_contact_transmission:    'Veg. contact',
-  vegetation_encroachment_primary:    'Veg. encroach.',
-  tall_vegetation_in_row:             'Tall vegetation',
-  guy_strand_corroded:                'Guy corrosion',
-  guy_strand_corrosion:               'Guy corrosion',
-  anchor_pulled:                      'Anchor pulled',
-  anchor_rod_exposed:                 'Anchor exposed',
-  insulator_arc_tracking:             'Arc tracking',
-  polymer_insulator_tracking:         'Arc tracking',
-  insulator_string_shattered:         'Shattered insulator',
-  conductor_strand_break:             'Strand break',
-  open_neutral:                       'Open neutral',
-  downed_conductor_dead_end_failure:  'Downed conductor',
-  dead_end_clamp_failure_phase_c:     'Clamp failure',
-  dead_end_clamp_slipped:             'Clamp slipped',
-  loose_transformer_hardware:         'Loose hardware',
-  loose_bank_hardware:                'Loose hardware',
-  loose_tap_clamp:                    'Loose clamp',
-  splice_thermal_damage:              'Thermal damage',
-  riser_insulation_burned:            'Burned insulation',
-  missing_equipment_ground:           'Missing ground',
-  ground_lead_disconnected:           'Ground disconnect',
-  cracked_bushing:                    'Cracked bushing',
-  jumper_damaged:                     'Damaged jumper',
-  bird_nest_on_equipment:             'Bird nest',
-  bird_nest_on_recloser:              'Bird nest',
-  unauthorized_attachment:            'Unauth. attachment',
-  unauthorized_antenna_attachment:    'Unauth. antenna',
-  id_tag_missing:                     'Missing ID tag',
-  id_tag_illegible:                   'Faded ID tag',
-  pole_id_faded:                      'Faded ID tag',
-  graffiti:                           'Graffiti',
-  none:                               'No issues',
+  transformer_oil_leak: 'Oil leak',
+  recloser_oil_leak: 'Oil leak',
+  crossarm_split: 'Crossarm split',
+  crossarm_decay: 'Crossarm decay',
+  pole_lean_excessive: 'Lean',
+  stub_lean_excessive: 'Lean',
+  groundline_decay: 'Decay',
+  pole_decay_groundline: 'Decay',
+  pole_decay_woodpecker: 'Decay',
+  vegetation_contact_primary: 'Veg. contact',
+  vegetation_contact_phase_a: 'Veg. contact',
+  vegetation_contact_transmission: 'Veg. contact',
+  vegetation_encroachment_primary: 'Veg. encroach.',
+  tall_vegetation_in_row: 'Tall vegetation',
+  guy_strand_corroded: 'Guy corrosion',
+  guy_strand_corrosion: 'Guy corrosion',
+  anchor_pulled: 'Anchor pulled',
+  anchor_rod_exposed: 'Anchor exposed',
+  insulator_arc_tracking: 'Arc tracking',
+  polymer_insulator_tracking: 'Arc tracking',
+  insulator_string_shattered: 'Shattered insulator',
+  conductor_strand_break: 'Strand break',
+  open_neutral: 'Open neutral',
+  downed_conductor_dead_end_failure: 'Downed conductor',
+  dead_end_clamp_failure_phase_c: 'Clamp failure',
+  dead_end_clamp_slipped: 'Clamp slipped',
+  loose_transformer_hardware: 'Loose hardware',
+  loose_bank_hardware: 'Loose hardware',
+  loose_tap_clamp: 'Loose clamp',
+  splice_thermal_damage: 'Thermal damage',
+  riser_insulation_burned: 'Burned insulation',
+  missing_equipment_ground: 'Missing ground',
+  ground_lead_disconnected: 'Ground disconnect',
+  cracked_bushing: 'Cracked bushing',
+  jumper_damaged: 'Damaged jumper',
+  unauthorized_attachment: 'Unauth. attachment',
+  unauthorized_antenna_attachment: 'Unauth. antenna',
+  id_tag_missing: 'Missing ID tag',
+  id_tag_illegible: 'Faded ID tag',
+  pole_id_faded: 'Faded ID tag',
+  graffiti: 'Graffiti',
+  none: 'No issues',
 };
 
 function violationToTag(violations: string[]): string {
-  const first = violations.find(v => v !== 'unknown') ?? 'none';
+  const first = violations.find((v) => v !== 'unknown') ?? 'none';
   if (first in VIOLATION_TAGS) return VIOLATION_TAGS[first];
-  return first.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return first.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
 function worstSeverity(analyses: PhotoAnalysis[]): SeverityLevel {
-  return analyses.reduce<SeverityLevel>((worst, a) => {
-    return SEV_ORDER.indexOf(a.severity) > SEV_ORDER.indexOf(worst) ? a.severity : worst;
-  }, 'low');
+  return analyses.reduce<SeverityLevel>((worst, analysis) => (
+    SEV_ORDER.indexOf(analysis.severity) > SEV_ORDER.indexOf(worst) ? analysis.severity : worst
+  ), 'low');
 }
 
 interface PhotoAnalysis {
@@ -101,18 +125,18 @@ interface SynthesisResult {
 
 const POLE_TYPES = [
   { id: '', label: 'Unknown / not specified' },
-  { id: 'sp35c5', label: 'SP 35 ft Cls 5 — Single-phase rural' },
-  { id: 'ju40c4', label: 'JU 40 ft Cls 4 — Joint-use urban' },
-  { id: 'de45c3', label: 'DE 45 ft Cls 3 — Dead-end' },
-  { id: 'daw46',  label: 'DAW 46 kV — Sub-transmission wood' },
-  { id: 'serv30c6', label: 'Serv 30 ft Cls 6 — Service pole' },
-  { id: 'ang40c4', label: 'ANG 40 ft Cls 4 — Angle pole' },
-  { id: 'hfw69',  label: 'HFW 69 kV — H-frame wood' },
-  { id: 'tap40c4', label: 'TAP 40 ft Cls 4 — Tap pole' },
-  { id: 'hfs138', label: 'HFS 138 kV — H-frame steel' },
-  { id: 'tds115', label: 'TDS 115 kV — Transmission dead-end steel' },
-  { id: 'bank45c3', label: 'Bank 45 ft Cls 3 — Transformer bank' },
-  { id: 'riser40c4', label: 'Riser 40 ft Cls 4 — Underground riser' },
+  { id: 'sp35c5', label: 'SP 35 ft Cls 5 - Single-phase rural' },
+  { id: 'ju40c4', label: 'JU 40 ft Cls 4 - Joint-use urban' },
+  { id: 'de45c3', label: 'DE 45 ft Cls 3 - Dead-end' },
+  { id: 'daw46', label: 'DAW 46 kV - Sub-transmission wood' },
+  { id: 'serv30c6', label: 'Serv 30 ft Cls 6 - Service pole' },
+  { id: 'ang40c4', label: 'ANG 40 ft Cls 4 - Angle pole' },
+  { id: 'hfw69', label: 'HFW 69 kV - H-frame wood' },
+  { id: 'tap40c4', label: 'TAP 40 ft Cls 4 - Tap pole' },
+  { id: 'hfs138', label: 'HFS 138 kV - H-frame steel' },
+  { id: 'tds115', label: 'TDS 115 kV - Transmission dead-end steel' },
+  { id: 'bank45c3', label: 'Bank 45 ft Cls 3 - Transformer bank' },
+  { id: 'riser40c4', label: 'Riser 40 ft Cls 4 - Underground riser' },
   { id: 'other', label: 'Other' },
 ];
 
@@ -135,6 +159,8 @@ export interface FieldReportPayload {
   severity: SeverityLevel;
   description: string;
   photo_count: number;
+  photos: Array<{ id: string; label: string; data_url: string }>;
+  ai_analysis: AiFinding;
 }
 
 export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBack, onSubmit }: FieldReviewStepProps) {
@@ -142,7 +168,6 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
   const [aiState, setAiState] = useState<'analyzing' | 'done'>('analyzing');
   const [synthesis, setSynthesis] = useState<SynthesisResult | null>(null);
   const [synthesisState, setSynthesisState] = useState<'idle' | 'synthesizing' | 'done'>('idle');
-
   const [poleId, setPoleId] = useState(initialPoleId);
   const [poleType, setPoleType] = useState('');
   const [classification, setClassification] = useState('');
@@ -153,12 +178,13 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
   const [lonStr, setLonStr] = useState(location ? location.lon.toFixed(6) : '');
   const [severity, setSeverity] = useState<SeverityLevel>('medium');
   const [description, setDescription] = useState('');
-
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelledRef = useRef(false);
+
+  const submittedPhotos = photos.map((photo) => ({ id: photo.id, label: photo.label, data_url: photo.dataUrl }));
+  const doneAnalyses = photoAnalyses.filter((analysis) => !analysis.analyzing && !analysis.failed);
 
   function compressPhoto(dataUrl: string, maxPx = 512, quality = 0.65): Promise<string> {
     return new Promise((resolve) => {
@@ -166,9 +192,9 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
       img.onload = () => {
         const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
         const canvas = document.createElement('canvas');
-        canvas.width  = Math.round(img.width  * ratio);
+        canvas.width = Math.round(img.width * ratio);
         canvas.height = Math.round(img.height * ratio);
-        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
         resolve(canvas.toDataURL('image/jpeg', quality));
       };
       img.onerror = () => resolve(dataUrl);
@@ -177,16 +203,16 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
   }
 
   async function synthesizeResults(succeeded: PhotoAnalysis[], pType: string) {
-    if (succeeded.length < 2) {
-      // Single photo — no synthesis needed, use it directly
+    if (succeeded.length === 1) {
+      const only = succeeded[0];
       setSynthesis({
-        severity: succeeded[0].severity,
-        violations: succeeded[0].violations,
-        summary: succeeded[0].recommendation,
-        recommendation: succeeded[0].recommendation,
-        nesc: succeeded[0].nesc,
-        confidence: succeeded[0].confidence,
-        poweredBy: succeeded[0].poweredBy,
+        severity: only.severity,
+        violations: only.violations,
+        summary: only.recommendation,
+        recommendation: only.recommendation,
+        nesc: only.nesc,
+        confidence: only.confidence,
+        poweredBy: only.poweredBy,
       });
       setSynthesisState('done');
       return;
@@ -200,22 +226,22 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
         body: JSON.stringify({
           pole_id: initialPoleId,
           pole_type: pType || null,
-          analyses: succeeded.map(a => ({
-            photo_label: a.photoLabel,
-            severity: a.severity,
-            violations: a.violations,
-            osha_class: a.oshaClass,
-            nesc_rules: a.nesc,
-            recommendation: a.recommendation,
-            ai_score: a.confidence,
+          analyses: succeeded.map((analysis) => ({
+            photo_label: analysis.photoLabel,
+            severity: analysis.severity,
+            violations: analysis.violations,
+            osha_class: analysis.oshaClass,
+            nesc_rules: analysis.nesc,
+            recommendation: analysis.recommendation,
+            ai_score: analysis.confidence,
           })),
         }),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      const sev = (data.severity as SeverityLevel) ?? 'medium';
+      const nextSeverity = (data.severity as SeverityLevel) ?? 'medium';
       setSynthesis({
-        severity: sev,
+        severity: nextSeverity,
         violations: data.violations ?? [],
         summary: data.summary ?? '',
         recommendation: data.recommendation ?? '',
@@ -223,22 +249,22 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
         confidence: data.ai_score ?? 70,
         poweredBy: data.powered_by ?? 'watsonx.ai',
       });
-      setSeverity(sev);
+      setSeverity(nextSeverity);
     } catch {
-      // Fallback: mechanical merge
-      const allViols = [...new Set(succeeded.flatMap(a => a.violations))];
-      const worst = succeeded.reduce((w, a) =>
-        SEV_ORDER.indexOf(a.severity) > SEV_ORDER.indexOf(w.severity) ? a : w
-      );
+      const allViolations = [...new Set(succeeded.flatMap((analysis) => analysis.violations))];
+      const worst = succeeded.reduce((currentWorst, analysis) => (
+        SEV_ORDER.indexOf(analysis.severity) > SEV_ORDER.indexOf(currentWorst.severity) ? analysis : currentWorst
+      ));
       setSynthesis({
         severity: worst.severity,
-        violations: allViols,
+        violations: allViolations,
         summary: `${succeeded.length} photos analyzed. ${worst.recommendation}`,
         recommendation: worst.recommendation,
-        nesc: [...new Set(succeeded.flatMap(a => a.nesc))],
-        confidence: Math.round(succeeded.reduce((s, a) => s + a.confidence, 0) / succeeded.length),
-        poweredBy: 'merged (synthesis unavailable)',
+        nesc: [...new Set(succeeded.flatMap((analysis) => analysis.nesc))],
+        confidence: Math.round(succeeded.reduce((sum, analysis) => sum + analysis.confidence, 0) / succeeded.length),
+        poweredBy: 'merged fallback',
       });
+      setSeverity(worst.severity);
     } finally {
       setSynthesisState('done');
     }
@@ -249,24 +275,28 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
 
     const photosToAnalyze = photos.slice(0, 3);
     cancelledRef.current = false;
-
-    // Reset synthesis whenever we start a fresh analysis
     setSynthesis(null);
     setSynthesisState('idle');
 
-    // Initialise all slots as "analyzing"
-    const initial: PhotoAnalysis[] = photosToAnalyze.map(p => ({
-      photoId: p.id, photoLabel: p.label, tag: '',
-      severity: 'medium', violations: [], oshaClass: 'other_than_serious',
-      recommendation: '', nesc: [], confidence: 0, poweredBy: '',
-      analyzing: true, failed: false,
+    const initial: PhotoAnalysis[] = photosToAnalyze.map((photo) => ({
+      photoId: photo.id,
+      photoLabel: photo.label,
+      tag: '',
+      severity: 'medium',
+      violations: [],
+      oshaClass: 'other_than_serious',
+      recommendation: '',
+      nesc: [],
+      confidence: 0,
+      poweredBy: '',
+      analyzing: true,
+      failed: false,
     }));
     setPhotoAnalyses(initial);
     setAiState('analyzing');
 
     const results = [...initial];
-
-    for (let i = 0; i < photosToAnalyze.length; i++) {
+    for (let i = 0; i < photosToAnalyze.length; i += 1) {
       if (cancelledRef.current) break;
       const photo = photosToAnalyze[i];
       try {
@@ -286,15 +316,14 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
-
-        const sev = (data.severity as SeverityLevel) ?? 'medium';
-        const viols: string[] = data.violations ?? [];
+        const nextSeverity = (data.severity as SeverityLevel) ?? 'medium';
+        const violations: string[] = data.violations ?? [];
         results[i] = {
           photoId: photo.id,
           photoLabel: photo.label,
-          tag: violationToTag(viols),
-          severity: sev,
-          violations: viols,
+          tag: violationToTag(violations),
+          severity: nextSeverity,
+          violations,
           oshaClass: data.osha_class ?? 'other_than_serious',
           recommendation: data.recommendation ?? '',
           nesc: data.nesc_rules ?? [],
@@ -311,11 +340,10 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
     }
 
     if (!cancelledRef.current) {
-      const succeeded = results.filter(r => !r.failed && !r.analyzing);
+      const succeeded = results.filter((analysis) => !analysis.failed && !analysis.analyzing);
       if (succeeded.length) {
         setSeverity(worstSeverity(succeeded));
         setAiState('done');
-        // Synthesize all findings into one unified assessment
         synthesizeResults(succeeded, pType);
       } else {
         setAiState('done');
@@ -329,6 +357,27 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
     timerRef.current = setTimeout(() => analyzeAllPhotos(desc, pType), 800);
   }
 
+  function analysisForSubmit(): AiFinding {
+    if (!synthesis) return { ...FALLBACK_FINDING, severity };
+
+    const activeViolations = synthesis.violations.filter((violation) => violation !== 'none' && violation !== 'unknown');
+    const title = activeViolations.length
+      ? activeViolations.slice(0, 3).map((violation) => violation.replace(/_/g, ' ')).join(' / ')
+      : 'Field photo review';
+
+    return {
+      severity,
+      finding: synthesis.summary || synthesis.recommendation || FALLBACK_FINDING.finding,
+      confidence: synthesis.confidence,
+      nesc: synthesis.nesc.length ? synthesis.nesc.join('; ') : FALLBACK_FINDING.nesc,
+      action: synthesis.recommendation || FALLBACK_FINDING.action,
+      dashboard_title: title,
+      regulations: synthesis.nesc,
+      evidence_required: FALLBACK_FINDING.evidence_required,
+      specifications: { detected_violations: activeViolations.length },
+    };
+  }
+
   useEffect(() => {
     if (photos.length > 0) scheduleAnalysis(description, poleType);
     return () => {
@@ -337,9 +386,6 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photos.length]);
-
-  // Derived values used by the photo breakdown section
-  const doneAnalyses = photoAnalyses.filter(a => !a.analyzing && !a.failed);
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -358,6 +404,8 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
         severity,
         description,
         photo_count: photos.length,
+        photos: submittedPhotos,
+        ai_analysis: analysisForSubmit(),
       });
     } catch {
       setError('Submission failed. Check your connection and try again.');
@@ -367,7 +415,6 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
 
   return (
     <div className="sub-screen">
-      {/* Header */}
       <div className="sub-hdr">
         <button className="sub-ico-btn" onClick={onBack} aria-label="Back">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -376,118 +423,85 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
         </button>
         <div className="sub-hdr-title">
           <span>Field report</span>
-          <span className="sub-hdr-sub">Step 2 of 2 · Review &amp; submit</span>
+          <span className="sub-hdr-sub">Step 2 of 2 - Review &amp; submit</span>
         </div>
         <div style={{ width: 32 }} />
       </div>
 
       <div className="sub-review-body">
-
-        {/* ── Photos with overlay tags ───────────────────────────────────────── */}
         <section className="sub-section">
           <h3 className="sub-section-label">Photos ({photos.length})</h3>
           <div className="fr-photo-grid">
-            {photos.map((p, i) => {
-              const analysis = photoAnalyses[i];
-              const tagColor = analysis && !analysis.analyzing && !analysis.failed
-                ? SEV[analysis.severity].border
-                : '#374151';
-              const tagText = analysis
-                ? analysis.analyzing ? '…' : analysis.tag || 'No issues'
-                : '';
+            {photos.map((photo, index) => {
+              const analysis = photoAnalyses[index];
+              const tagColor = analysis && !analysis.analyzing && !analysis.failed ? SEV[analysis.severity].border : '#374151';
+              const tagText = analysis ? (analysis.analyzing ? '...' : analysis.tag || 'No issues') : '';
               return (
-                <div key={p.id} className="fr-photo-thumb">
-                  <img src={p.dataUrl} alt={p.label} />
-                  <span className="fr-photo-lbl">{p.label}</span>
-                  {tagText && (
-                    <span
-                      className="fr-photo-tag"
-                      style={{ background: tagColor }}
-                    >
-                      {tagText}
-                    </span>
-                  )}
+                <div key={photo.id} className="fr-photo-thumb">
+                  <img src={photo.dataUrl} alt={photo.label} />
+                  <span className="fr-photo-lbl">{photo.label}</span>
+                  {tagText && <span className="fr-photo-tag" style={{ background: tagColor }}>{tagText}</span>}
                 </div>
               );
             })}
           </div>
         </section>
 
-        {/* ── AI unified summary panel ───────────────────────────────────────── */}
         {photos.length > 0 && (
           <section className="fr-ai-panel">
-            {/* Phase 1: photo-by-photo analysis still running */}
             {aiState === 'analyzing' ? (
               <div className="fr-ai-hdr">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2" className="fr-spin">
                   <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                 </svg>
-                Analyzing {photos.length} photo{photos.length !== 1 ? 's' : ''}…
+                Analyzing {photos.length} photo{photos.length !== 1 ? 's' : ''}...
                 {doneAnalyses.length > 0 && (
                   <span style={{ fontSize: 11, color: '#60A5FA', marginLeft: 6 }}>
                     ({doneAnalyses.length} of {photoAnalyses.length} done)
                   </span>
                 )}
               </div>
-
-            /* Phase 2: photos done, synthesis in progress */
             ) : synthesisState === 'synthesizing' ? (
               <div className="fr-ai-hdr">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2" className="fr-spin">
                   <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                 </svg>
-                Synthesizing {doneAnalyses.length} findings into one assessment…
+                Synthesizing {doneAnalyses.length} findings into one assessment...
               </div>
-
-            /* Phase 3: synthesis complete */
             ) : synthesis ? (
               <>
                 <div className="fr-ai-hdr">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                   </svg>
-                  Unified pole assessment · {doneAnalyses.length} photo{doneAnalyses.length !== 1 ? 's' : ''}
+                  Unified pole assessment - {doneAnalyses.length} photo{doneAnalyses.length !== 1 ? 's' : ''}
                   <span className="fr-ai-confidence">{synthesis.confidence}% confidence</span>
-                  <span style={{ marginLeft: 'auto', fontSize: 9, color: '#4B5563' }}>
-                    {synthesis.poweredBy}
-                  </span>
+                  <span style={{ marginLeft: 'auto', fontSize: 9, color: '#4B5563' }}>{synthesis.poweredBy}</span>
                 </div>
-
-                {/* Narrative summary — the stitched paragraph */}
-                {synthesis.summary && (
-                  <p className="fr-ai-finding">{synthesis.summary}</p>
-                )}
-
-                {/* Combined violations */}
-                {synthesis.violations.filter(v => v !== 'none' && v !== 'unknown').length > 0 && (
+                {synthesis.summary && <p className="fr-ai-finding">{synthesis.summary}</p>}
+                {synthesis.violations.filter((violation) => violation !== 'none' && violation !== 'unknown').length > 0 && (
                   <p style={{ margin: '4px 0 0', fontSize: 12, color: '#93C5FD', lineHeight: 1.45 }}>
                     <strong style={{ color: '#DBEAFE' }}>Violations: </strong>
                     {synthesis.violations
-                      .filter(v => v !== 'none' && v !== 'unknown')
-                      .map(v => v.replace(/_/g, ' '))
-                      .join(' · ')}
+                      .filter((violation) => violation !== 'none' && violation !== 'unknown')
+                      .map((violation) => violation.replace(/_/g, ' '))
+                      .join(' - ')}
                   </p>
                 )}
-
                 <div className="fr-ai-meta">
                   {synthesis.nesc.length > 0 && (
                     <span className="fr-ai-nesc">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
                       </svg>
-                      {synthesis.nesc.join(' · ')}
+                      {synthesis.nesc.join(' - ')}
                     </span>
                   )}
-                  {synthesis.recommendation && (
-                    <span className="fr-ai-action">{synthesis.recommendation}</span>
-                  )}
+                  {synthesis.recommendation && <span className="fr-ai-action">{synthesis.recommendation}</span>}
                 </div>
-
                 <p className="fr-ai-nudge">
                   Recommended severity:{' '}
-                  <strong style={{ color: SEV[synthesis.severity].color }}>
-                    {SEV[synthesis.severity].label}
-                  </strong>.
+                  <strong style={{ color: SEV[synthesis.severity].color }}>{SEV[synthesis.severity].label}</strong>.
                   Adjust below if needed.
                 </p>
               </>
@@ -495,63 +509,65 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
           </section>
         )}
 
-        {/* ── Per-photo written breakdown ────────────────────────────────────── */}
         {photoAnalyses.length > 0 && (
           <section className="sub-section">
             <h3 className="sub-section-label">Photo breakdown</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {photoAnalyses.map((a, i) => (
+              {photoAnalyses.map((analysis, index) => (
                 <div
-                  key={a.photoId}
+                  key={analysis.photoId}
                   className="fr-photo-result"
-                  style={{ borderColor: a.analyzing ? '#1F2937' : SEV[a.severity].border }}
+                  style={{ borderColor: analysis.analyzing ? '#1F2937' : SEV[analysis.severity].border }}
                 >
                   <div className="fr-photo-result-hdr">
                     <span style={{ fontSize: 12, fontWeight: 600, color: '#CBD5E1' }}>
-                      Photo {i + 1} · {a.photoLabel}
+                      Photo {index + 1} - {analysis.photoLabel}
                     </span>
-                    {a.analyzing ? (
+                    {analysis.analyzing ? (
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#64748B' }}>
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2" className="fr-spin">
                           <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                         </svg>
-                        Analyzing…
+                        Analyzing...
                       </span>
-                    ) : a.failed ? (
+                    ) : analysis.failed ? (
                       <span style={{ fontSize: 11, color: '#FCA5A5' }}>Analysis failed</span>
                     ) : (
-                      <span style={{
-                        fontSize: 11, fontWeight: 700,
-                        color: SEV[a.severity].color,
-                        background: SEV[a.severity].bg,
-                        border: `1px solid ${SEV[a.severity].border}`,
-                        borderRadius: 4, padding: '1px 7px',
-                      }}>
-                        {SEV[a.severity].label}
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: SEV[analysis.severity].color,
+                          background: SEV[analysis.severity].bg,
+                          border: `1px solid ${SEV[analysis.severity].border}`,
+                          borderRadius: 4,
+                          padding: '1px 7px',
+                        }}
+                      >
+                        {SEV[analysis.severity].label}
                       </span>
                     )}
                   </div>
-
-                  {!a.analyzing && !a.failed && (
+                  {!analysis.analyzing && !analysis.failed && (
                     <>
                       <p style={{ margin: '7px 0 0', fontSize: 12, color: '#BFDBFE', lineHeight: 1.5 }}>
-                        {a.violations.filter(v => v !== 'none' && v !== 'unknown').length > 0
-                          ? a.violations
-                              .filter(v => v !== 'none' && v !== 'unknown')
-                              .map(v => v.replace(/_/g, ' '))
-                              .join(' · ')
+                        {analysis.violations.filter((violation) => violation !== 'none' && violation !== 'unknown').length > 0
+                          ? analysis.violations
+                              .filter((violation) => violation !== 'none' && violation !== 'unknown')
+                              .map((violation) => violation.replace(/_/g, ' '))
+                              .join(' - ')
                           : 'No violations detected'}
                       </p>
                       <p style={{ margin: '4px 0 0', fontSize: 12, color: '#93C5FD', lineHeight: 1.45 }}>
-                        {a.recommendation}
+                        {analysis.recommendation}
                       </p>
-                      {a.nesc.length > 0 && (
+                      {analysis.nesc.length > 0 && (
                         <p style={{ margin: '5px 0 0', fontSize: 10, color: '#60A5FA', opacity: 0.85 }}>
-                          {a.nesc.slice(0, 3).join(' · ')}
+                          {analysis.nesc.slice(0, 3).join(' - ')}
                         </p>
                       )}
                       <p style={{ margin: '4px 0 0', fontSize: 10, color: '#4B5563' }}>
-                        {a.confidence}% confidence
+                        {analysis.confidence}% confidence
                       </p>
                     </>
                   )}
@@ -561,19 +577,18 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
           </section>
         )}
 
-        {/* ── Severity ──────────────────────────────────────────────────────── */}
         <section className="sub-section">
           <h3 className="sub-section-label">Severity</h3>
           <div className="fr-sev-row">
-            {(['critical', 'high', 'medium', 'low'] as SeverityLevel[]).map((s) => {
-              const meta = SEV[s];
-              const active = severity === s;
+            {(['critical', 'high', 'medium', 'low'] as SeverityLevel[]).map((item) => {
+              const meta = SEV[item];
+              const active = severity === item;
               return (
                 <button
-                  key={s}
+                  key={item}
                   className={`fr-sev-btn${active ? ' active' : ''}`}
                   style={active ? { borderColor: meta.border, background: meta.bg, color: meta.color } : {}}
-                  onClick={() => setSeverity(s)}
+                  onClick={() => setSeverity(item)}
                 >
                   {meta.label}
                 </button>
@@ -582,7 +597,6 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
           </div>
         </section>
 
-        {/* ── Pole identity ─────────────────────────────────────────────────── */}
         <section className="sub-section">
           <h3 className="sub-section-label">Pole identity</h3>
           <div className="fr-field-group">
@@ -591,8 +605,15 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
           </div>
           <div className="fr-field-group">
             <label className="fr-label">Pole type</label>
-            <select className="fr-select" value={poleType} onChange={(e) => setPoleType(e.target.value)}>
-              {POLE_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+            <select
+              className="fr-select"
+              value={poleType}
+              onChange={(e) => {
+                setPoleType(e.target.value);
+                scheduleAnalysis(description, e.target.value);
+              }}
+            >
+              {POLE_TYPES.map((type) => <option key={type.id} value={type.id}>{type.label}</option>)}
             </select>
           </div>
           <div className="fr-row">
@@ -611,13 +632,12 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
           </div>
         </section>
 
-        {/* ── Location ──────────────────────────────────────────────────────── */}
         <section className="sub-section">
           <h3 className="sub-section-label">Location</h3>
           {location && (
             <div className="fr-gps-badge">
               <span className="fr-pulse" />
-              GPS captured · ±{location.accuracy.toFixed(1)} m accuracy
+              GPS captured - +/-{location.accuracy.toFixed(1)} m accuracy
             </div>
           )}
           <div className="fr-row">
@@ -636,14 +656,13 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
           </div>
         </section>
 
-        {/* ── Description ───────────────────────────────────────────────────── */}
         <section className="sub-section">
           <h3 className="sub-section-label">
             Description <span className="sub-section-opt">(optional)</span>
           </h3>
           <textarea
             className="sub-textarea"
-            placeholder="Describe what you observed — damage type, extent, any immediate safety hazard…"
+            placeholder="Describe what you observed - damage type, extent, any immediate safety hazard..."
             value={description}
             onChange={(e) => {
               setDescription(e.target.value);
@@ -663,7 +682,7 @@ export function FieldReviewStep({ poleId: initialPoleId, photos, location, onBac
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="fr-spin">
                 <path d="M21 12a9 9 0 1 1-6.219-8.56" />
               </svg>
-              Submitting…
+              Submitting...
             </>
           ) : (
             <>

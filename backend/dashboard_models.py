@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class Severity(StrEnum):
@@ -48,9 +48,17 @@ class DashboardSummary(BaseModel):
     critical: int
     high: int
     medium: int
+    low: int
     open_reports: int
     sector: str
     date: str
+
+
+class MapPole(BaseModel):
+    id: str
+    severity: Severity
+    lat: float
+    lon: float
 
 
 class Report(BaseModel):
@@ -62,6 +70,7 @@ class Report(BaseModel):
     submitted_at: str
     location: str
     status: ReportStatus
+    map_node: MapPole | None = None
 
 
 class SelectedReport(BaseModel):
@@ -83,7 +92,7 @@ class PoleDetail(BaseModel):
     height: str
     owner: str
     circuit: str
-    lean: str | None  # None when unknown or within spec
+    lean: str | None
     ai_score: int
     ai_confidence: str
     recommendation: str
@@ -92,6 +101,7 @@ class PoleDetail(BaseModel):
 class FieldPhoto(BaseModel):
     id: str
     label: str
+    image_url: str | None
     severity: Severity | None
     severity_label: str | None
 
@@ -107,39 +117,56 @@ class HistoryEvent(BaseModel):
     id: str
     type: HistoryEventType
     title: str
-    date: str | None  # None when installation or maintenance date is unknown
+    date: str | None
     author: ReportAuthor | None
     description: str | None
-    comment: str | None  # populated only for comment-type events
+    comment: str | None
     severity: Severity | None
     pin_color: str
 
 
 class PoleHistory(BaseModel):
     pole_id: str
-    lifecycle_years: int | None  # None when install date is unknown
+    lifecycle_years: int | None
     event_count: int
     comment_count: int
     events: list[HistoryEvent]
 
 
-class MapPole(BaseModel):
-    id: str
-    severity: Severity
-    lat: float
-    lon: float
+class FilterOption(BaseModel):
+    value: str
+    label: str
+    count: int
+
+
+class DashboardFilterOptions(BaseModel):
+    severities: list[FilterOption]
+    classifications: list[FilterOption]
+    circuits: list[FilterOption]
+    owners: list[FilterOption]
+    violation_families: list[FilterOption]
+    violation_types: list[FilterOption]
 
 
 class DashboardResponse(BaseModel):
     summary: DashboardSummary
     reports: list[Report]
     map_poles: list[MapPole]
+    map_pole_count: int
+    filters: DashboardFilterOptions
     selected_report: SelectedReport | None
     selected_pole: PoleDetail | None
     photos: list[FieldPhoto]
     history: PoleHistory | None
     current_user: User
     note_count: int
+
+
+class MapPolesResponse(BaseModel):
+    poles: list[MapPole]
+    total: int
+    offset: int
+    limit: int
 
 
 class AddNoteRequest(BaseModel):
@@ -150,13 +177,16 @@ class UpdateReportStatusRequest(BaseModel):
     status: ReportStatus
 
 
+class UpdateReportSeverityRequest(BaseModel):
+    severity: Severity
+
+
 class AnalyzeRequest(BaseModel):
     pole_id: str
     pole_type: str | None = None
     description: str = ""
     photo_count: int = 0
     address: str | None = None
-    # Base64 JPEG data URLs (frontend compresses to ≤512 px before sending)
     photos: list[str] | None = None
 
 
@@ -169,7 +199,6 @@ class AnalyzeResponse(BaseModel):
     ai_score: int
     confidence: str
     powered_by: str
-    # Vision model only — what it physically observed in the photos
     visual_observations: list[str] | None = None
 
 
@@ -180,7 +209,6 @@ class GpsLocation(BaseModel):
 
 
 class PhotoAnalysisInput(BaseModel):
-    """One photo's analysis result, forwarded to the synthesis endpoint."""
     photo_label: str
     severity: Severity
     violations: list[str]
@@ -202,10 +230,36 @@ class SynthesizeResponse(BaseModel):
     osha_class: str
     nesc_rules: list[str]
     recommendation: str
-    summary: str          # narrative paragraph for the technician
+    summary: str
     ai_score: int
     confidence: str
     powered_by: str
+
+
+class SubmittedPhoto(BaseModel):
+    id: str
+    label: str
+    data_url: str = Field(validation_alias=AliasChoices("data_url", "dataUrl"))
+
+
+class PhotoAnalysis(BaseModel):
+    severity: Severity
+    finding: str
+    confidence: int
+    nesc: str
+    action: str
+    violation_type_id: str | None = None
+    violation_code: str | None = None
+    violation_family: str | None = None
+    dashboard_title: str | None = None
+    regulations: list[str] = Field(default_factory=list)
+    evidence_required: str | None = None
+    specifications: dict[str, str | int | float | None] = Field(default_factory=dict)
+
+
+class AnalyzePhotosRequest(BaseModel):
+    photos: list[SubmittedPhoto]
+    description: str | None = None
 
 
 class SubmitReportRequest(BaseModel):
@@ -213,7 +267,8 @@ class SubmitReportRequest(BaseModel):
     location: GpsLocation | None
     description: str
     photo_count: int
-    # Extended fields from the field technician form (all optional for back-compat)
+    photos: list[SubmittedPhoto] = Field(default_factory=list)
+    ai_analysis: PhotoAnalysis | None = None
     pole_type: str | None = None
     classification: str | None = None
     owner: str | None = None

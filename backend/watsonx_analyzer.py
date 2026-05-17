@@ -18,7 +18,12 @@ import re
 import time
 from typing import Any
 
-import requests
+try:
+    import requests
+    from requests import HTTPError as RequestsHTTPError
+except ImportError:  # Allows the dashboard to run before optional Watson deps are installed.
+    requests = None  # type: ignore[assignment]
+    RequestsHTTPError = Exception
 
 logger = logging.getLogger(__name__)
 
@@ -274,6 +279,8 @@ class _TokenCache:
         self._expires_at: float = 0.0
 
     def get(self, api_key: str) -> str:
+        if requests is None:
+            raise RuntimeError("requests is not installed")
         if self._token and time.time() < self._expires_at - 300:
             return self._token
         resp = requests.post(
@@ -304,7 +311,7 @@ class WatsonXAnalyzer:
         self.api_key = os.getenv("WATSONX_API_KEY")
         self.project_id = WATSONX_PROJECT_ID
         self.base_url = WATSONX_URL
-        self._configured = bool(self.api_key)
+        self._configured = bool(self.api_key and requests is not None)
 
     @property
     def is_configured(self) -> bool:
@@ -599,7 +606,7 @@ class WatsonXAnalyzer:
             result["powered_by"] = f"watsonx.ai · {TEXT_MODEL_ID} (synthesis)"
             logger.info("Synthesis result: severity=%s violations=%s", result.get("severity"), result.get("violations"))
             return result
-        except requests.HTTPError as exc:
+        except RequestsHTTPError as exc:
             logger.error("Synthesis HTTP %s: %s", exc.response.status_code, exc.response.text[:300])
         except (json.JSONDecodeError, KeyError, ValueError) as exc:
             logger.error("Synthesis parse error: %s", exc)
@@ -644,7 +651,7 @@ class WatsonXAnalyzer:
                 result["powered_by"] = f"watsonx.ai · {VISION_MODEL_ID} ({len(valid_photos)} photo{'s' if len(valid_photos) != 1 else ''})"
                 logger.info("Vision result: severity=%s violations=%s", result.get("severity"), result.get("violations"))
                 return result
-            except requests.HTTPError as exc:
+            except RequestsHTTPError as exc:
                 logger.error("vision model HTTP %s: %s", exc.response.status_code, exc.response.text[:300])
                 logger.info("Falling back to text-only Granite")
             except (json.JSONDecodeError, KeyError, ValueError) as exc:
@@ -663,7 +670,7 @@ class WatsonXAnalyzer:
             result = self._parse_response(raw)
             result["powered_by"] = f"watsonx.ai · {TEXT_MODEL_ID}"
             return result
-        except requests.HTTPError as exc:
+        except RequestsHTTPError as exc:
             logger.error("Granite HTTP %s: %s", exc.response.status_code, exc.response.text[:300])
         except (json.JSONDecodeError, KeyError, ValueError) as exc:
             logger.error("Granite parse error: %s", exc)

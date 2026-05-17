@@ -28,6 +28,7 @@ export interface DashboardSummary {
   critical: number;
   high: number;
   medium: number;
+  low: number;
   openReports: number;
   sector: string;
   date: string;
@@ -42,6 +43,7 @@ export interface Report {
   submittedAt: string;
   location: string;
   status: ReportStatus;
+  mapNode: MapPole | null;
 }
 
 export interface SelectedReport {
@@ -72,6 +74,7 @@ export interface PoleDetail {
 export interface FieldPhoto {
   id: string;
   label: string;
+  imageUrl: string | null;
   severity: Severity | null;
   severityLabel: string | null;
 }
@@ -111,10 +114,36 @@ export interface MapPole {
   lon: number;
 }
 
+export interface FilterOption {
+  value: string;
+  label: string;
+  count: number;
+}
+
+export interface DashboardFilterOptions {
+  severities: FilterOption[];
+  classifications: FilterOption[];
+  circuits: FilterOption[];
+  owners: FilterOption[];
+  violationFamilies: FilterOption[];
+  violationTypes: FilterOption[];
+}
+
+export interface DashboardFilterState {
+  severities: Severity[];
+  classifications: string[];
+  circuits: string[];
+  owners: string[];
+  violationFamilies: string[];
+  violationTypeIds: string[];
+}
+
 export interface DashboardData {
   summary: DashboardSummary;
   reports: Report[];
   mapPoles: MapPole[];
+  mapPoleCount: number;
+  filters: DashboardFilterOptions;
   selectedReport: SelectedReport | null;
   selectedPole: PoleDetail | null;
   photos: FieldPhoto[];
@@ -129,4 +158,5 @@ export type WsPayload =
   | { event: 'kpi_update'; data: Record<string, unknown> }
   | { event: 'report_added'; data: Record<string, unknown> }
   | { event: 'note_added'; data: { report_id: string; note: Record<string, unknown> } }
-  | { event: 'report_status_changed'; data: { report_id: string; status: ReportStatus } };
+  | { event: 'report_status_changed'; data: { report_id: string; status: ReportStatus } }
+  | { event: 'report_severity_changed'; data: { report_id: string; pole_id: string; severity: Severity } };

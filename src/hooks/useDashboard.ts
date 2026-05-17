@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   DashboardData,
+  DashboardFilterOptions,
+  DashboardFilterState,
   DashboardSummary,
   FieldPhoto,
   HistoryEvent,
@@ -20,8 +22,18 @@ import { useWebSocket } from './useWebSocket';
 
 const API = 'http://127.0.0.1:8000/api/dashboard';
 const WS_URL = 'ws://127.0.0.1:8000/api/dashboard/ws';
+const MAP_BATCH_SIZE = 1500;
 
 type JsonObj = Record<string, unknown>;
+
+export const EMPTY_DASHBOARD_FILTERS: DashboardFilterState = {
+  severities: [],
+  classifications: [],
+  circuits: [],
+  owners: [],
+  violationFamilies: [],
+  violationTypeIds: [],
+};
 
 function mapSummary(s: JsonObj): DashboardSummary {
   return {
@@ -30,6 +42,7 @@ function mapSummary(s: JsonObj): DashboardSummary {
     critical: s.critical as number,
     high: s.high as number,
     medium: s.medium as number,
+    low: s.low as number,
     openReports: s.open_reports as number,
     sector: s.sector as string,
     date: s.date as string,
@@ -47,7 +60,49 @@ function mapReport(r: JsonObj): Report {
     submittedAt: r.submitted_at as string,
     location: r.location as string,
     status: r.status as ReportStatus,
+    mapNode: r.map_node ? mapMapPole(r.map_node as JsonObj) : null,
   };
+}
+
+function mapMapPole(p: JsonObj): MapPole {
+  return {
+    id: p.id as string,
+    severity: p.severity as Severity,
+    lat: p.lat as number,
+    lon: p.lon as number,
+  };
+}
+
+function mergeMapPoles(existing: MapPole[], incoming: MapPole[]): MapPole[] {
+  const byId = new Map(existing.map((pole) => [pole.id, pole]));
+  incoming.forEach((pole) => byId.set(pole.id, pole));
+  return [...byId.values()];
+}
+
+function reportMapNodes(reports: Report[]): MapPole[] {
+  return reports.map((report) => report.mapNode).filter((pole): pole is MapPole => Boolean(pole));
+}
+
+function appendFilterParams(params: URLSearchParams, activeFilters: DashboardFilterState, activeSearch: string) {
+  if (activeSearch.trim()) params.set('search', activeSearch.trim());
+  activeFilters.severities.forEach((value) => params.append('severity', value));
+  activeFilters.classifications.forEach((value) => params.append('classification', value));
+  activeFilters.circuits.forEach((value) => params.append('circuit', value));
+  activeFilters.owners.forEach((value) => params.append('owner', value));
+  activeFilters.violationFamilies.forEach((value) => params.append('violation_family', value));
+  activeFilters.violationTypeIds.forEach((value) => params.append('violation_type_id', value));
+}
+
+function mapScopeKey(activeFilters: DashboardFilterState, activeSearch: string): string {
+  return JSON.stringify({
+    search: activeSearch.trim(),
+    severities: activeFilters.severities,
+    classifications: activeFilters.classifications,
+    circuits: activeFilters.circuits,
+    owners: activeFilters.owners,
+    violationFamilies: activeFilters.violationFamilies,
+    violationTypeIds: activeFilters.violationTypeIds,
+  });
 }
 
 function mapSelectedReport(sr: JsonObj): SelectedReport {
@@ -136,21 +191,35 @@ function mapResponse(raw: JsonObj): DashboardData {
   const photos = (raw.photos as JsonObj[]).map((p): FieldPhoto => ({
     id: p.id as string,
     label: p.label as string,
+    imageUrl: p.image_url as string | null,
     severity: p.severity as Severity | null,
     severityLabel: p.severity_label as string | null,
   }));
 
-  const mapPoles = (raw.map_poles as JsonObj[]).map((p): MapPole => ({
-    id: p.id as string,
-    severity: p.severity as Severity,
-    lat: p.lat as number,
-    lon: p.lon as number,
-  }));
+  const reports = (raw.reports as JsonObj[]).map(mapReport);
+  const mapPoles = mergeMapPoles(((raw.map_poles as JsonObj[]) ?? []).map(mapMapPole), reportMapNodes(reports));
+
+  const rawFilters = raw.filters as JsonObj;
+  const mapOption = (option: JsonObj) => ({
+    value: option.value as string,
+    label: option.label as string,
+    count: option.count as number,
+  });
+  const filters: DashboardFilterOptions = {
+    severities: ((rawFilters.severities as JsonObj[]) ?? []).map(mapOption),
+    classifications: ((rawFilters.classifications as JsonObj[]) ?? []).map(mapOption),
+    circuits: ((rawFilters.circuits as JsonObj[]) ?? []).map(mapOption),
+    owners: ((rawFilters.owners as JsonObj[]) ?? []).map(mapOption),
+    violationFamilies: ((rawFilters.violation_families as JsonObj[]) ?? []).map(mapOption),
+    violationTypes: ((rawFilters.violation_types as JsonObj[]) ?? []).map(mapOption),
+  };
 
   return {
     summary: mapSummary(raw.summary as JsonObj),
-    reports: (raw.reports as JsonObj[]).map(mapReport),
+    reports,
     mapPoles,
+    mapPoleCount: raw.map_pole_count as number,
+    filters,
     selectedReport,
     selectedPole,
     photos,
@@ -165,27 +234,89 @@ export function useDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<DashboardFilterState>(EMPTY_DASHBOARD_FILTERS);
+  const [search, setSearch] = useState('');
   const selectedReportIdRef = useRef(selectedReportId);
+  const mapFetchRunRef = useRef(0);
+  const mapScopeKeyRef = useRef(mapScopeKey(filters, search));
   selectedReportIdRef.current = selectedReportId;
 
-  const fetchDashboard = useCallback(async (reportId?: string | null) => {
+  const fetchDashboard = useCallback(async (reportId?: string | null, activeFilters = filters, activeSearch = search) => {
     try {
-      const params = reportId ? `?selected_report_id=${reportId}` : '';
-      const res = await fetch(`${API}${params}`);
+      const params = new URLSearchParams();
+      if (reportId) params.set('selected_report_id', reportId);
+      appendFilterParams(params, activeFilters, activeSearch);
+      const qs = params.toString();
+      const res = await fetch(`${API}${qs ? `?${qs}` : ''}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = (await res.json()) as JsonObj;
-      setData(mapResponse(json));
+      const next = mapResponse(json);
+      const nextScopeKey = mapScopeKey(activeFilters, activeSearch);
+      setData((prev) => {
+        if (!prev || mapScopeKeyRef.current !== nextScopeKey) return next;
+        return {
+          ...next,
+          mapPoles: mergeMapPoles(prev.mapPoles, next.mapPoles),
+        };
+      });
       setError(null);
     } catch {
       setError('Backend not reachable — start FastAPI on port 8000.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filters, search]);
 
   useEffect(() => {
-    fetchDashboard(selectedReportId);
-  }, [fetchDashboard, selectedReportId]);
+    fetchDashboard(selectedReportId, filters, search);
+  }, [fetchDashboard, selectedReportId, filters, search]);
+
+  const fetchMapPoles = useCallback(async (activeFilters = filters, activeSearch = search) => {
+    const runId = ++mapFetchRunRef.current;
+    const nextScopeKey = mapScopeKey(activeFilters, activeSearch);
+    mapScopeKeyRef.current = nextScopeKey;
+    let offset = 0;
+    let loadedAll = false;
+
+    setData((prev) => {
+      if (!prev) return prev;
+      return { ...prev, mapPoles: reportMapNodes(prev.reports) };
+    });
+
+    while (!loadedAll) {
+      const params = new URLSearchParams();
+      params.set('offset', String(offset));
+      params.set('limit', String(MAP_BATCH_SIZE));
+      appendFilterParams(params, activeFilters, activeSearch);
+
+      const res = await fetch(`${API}/map-poles?${params.toString()}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = (await res.json()) as JsonObj;
+      const batch = ((json.poles as JsonObj[]) ?? []).map(mapMapPole);
+      const total = json.total as number;
+
+      if (runId !== mapFetchRunRef.current) return;
+
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          mapPoleCount: total,
+          mapPoles: mergeMapPoles(prev.mapPoles, batch),
+        };
+      });
+
+      offset += batch.length;
+      loadedAll = batch.length < MAP_BATCH_SIZE || offset >= total;
+    }
+  }, [filters, search]);
+
+  useEffect(() => {
+    if (!data) return;
+    fetchMapPoles(filters, search).catch(() => {
+      setError('Backend not reachable â€” map nodes could not be loaded.');
+    });
+  }, [data?.summary.date, filters, search, fetchMapPoles]);
 
   const handleWsMessage = useCallback(
     (payload: WsPayload) => {
@@ -200,12 +331,35 @@ export function useDashboard() {
               critical: d.critical as number,
               high: d.high as number,
               medium: d.medium as number,
+              low: d.low as number,
               openReports: d.open_reports as number,
             },
           };
         });
       } else if (payload.event === 'report_added') {
-        fetchDashboard(selectedReportIdRef.current);
+        const report = mapReport(payload.data as JsonObj);
+        const hasActiveFilters =
+          search.trim() ||
+          filters.severities.length ||
+          filters.classifications.length ||
+          filters.circuits.length ||
+          filters.owners.length ||
+          filters.violationFamilies.length ||
+          filters.violationTypeIds.length;
+
+        if (hasActiveFilters) {
+          fetchDashboard(selectedReportIdRef.current, filters, search);
+          return;
+        }
+
+        setData((prev) => {
+          if (!prev || prev.reports.some((existing) => existing.id === report.id)) return prev;
+          return {
+            ...prev,
+            reports: [report, ...prev.reports],
+            mapPoles: report.mapNode ? mergeMapPoles(prev.mapPoles, [report.mapNode]) : prev.mapPoles,
+          };
+        });
       } else if (payload.event === 'note_added') {
         const d = payload.data;
         setData((prev) => {
@@ -224,9 +378,11 @@ export function useDashboard() {
               : prev.selectedReport;
           return { ...prev, reports, selectedReport };
         });
+      } else if (payload.event === 'report_severity_changed') {
+        fetchDashboard(selectedReportIdRef.current, filters, search);
       }
     },
-    [fetchDashboard],
+    [fetchDashboard, filters, search],
   );
 
   const { connected } = useWebSocket(WS_URL, { onMessage: handleWsMessage });
@@ -251,5 +407,31 @@ export function useDashboard() {
     });
   }, []);
 
-  return { data, loading, error, connected, selectReport, addNote, updateReportStatus };
+  const updateReportSeverity = useCallback(async (reportId: string, severity: Severity) => {
+    await fetch(`${API}/reports/${reportId}/severity`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ severity }),
+    });
+  }, []);
+
+  const updateFilters = useCallback((next: DashboardFilterState) => {
+    setFilters(next);
+    setSelectedReportId(null);
+  }, []);
+
+  return {
+    data,
+    loading,
+    error,
+    connected,
+    filters,
+    setFilters: updateFilters,
+    search,
+    setSearch,
+    selectReport,
+    addNote,
+    updateReportStatus,
+    updateReportSeverity,
+  };
 }

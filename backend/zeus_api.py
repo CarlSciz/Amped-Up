@@ -2,7 +2,7 @@
 API endpoints for Zeus AI Agent - ANSI O5.1-2022 Expert
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Query
 from typing import Optional, Dict, List
 from pydantic import BaseModel, Field
 
@@ -32,6 +32,17 @@ class ZeusCapabilitiesResponse(BaseModel):
     """Response model for Zeus capabilities"""
     capabilities: Dict[str, List[str]]
     description: str
+
+
+class ZeusModelBuildPlanResponse(BaseModel):
+    """Response model for IBM model-building plan"""
+    can_use_zeus_for_ibm_mvi: bool
+    role_of_zeus: str
+    role_of_ibm_mvi: str
+    record_count: int
+    local_package_dir: str
+    outputs: List[str]
+    live_app_flow: List[str]
 
 
 # Initialize Zeus agent
@@ -88,10 +99,31 @@ async def get_capabilities():
     )
 
 
+@router.get("/model-training/plan", response_model=ZeusModelBuildPlanResponse)
+async def get_model_training_plan():
+    """
+    Explain how Zeus can drive the IBM MVI model-building workflow.
+    """
+    return zeus.get_ibm_model_build_plan()
+
+
+@router.post("/model-training/export")
+async def export_model_training_package():
+    """
+    Generate local IBM MVI / watsonx training files from the SVG exemplar library.
+
+    Outputs are written under dataset/inspection_training.
+    """
+    try:
+        return zeus.build_ibm_mvi_training_package()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Model training export failed: {str(e)}")
+
+
 @router.post("/specification")
 async def get_specification(
-    pole_class: str = Field(..., description="Pole class (e.g., H1, 1, 2)"),
-    length_ft: float = Field(..., description="Pole length in feet")
+    pole_class: str = Query(..., description="Pole class (e.g., H1, 1, 2)"),
+    length_ft: float = Query(..., description="Pole length in feet")
 ):
     """
     Quick specification lookup via Zeus
@@ -107,8 +139,8 @@ async def get_specification(
 
 @router.post("/recommend")
 async def get_recommendation(
-    required_load_lbs: float = Field(..., description="Required horizontal load in pounds"),
-    length_ft: float = Field(..., description="Desired pole length in feet")
+    required_load_lbs: float = Query(..., description="Required horizontal load in pounds"),
+    length_ft: float = Query(..., description="Desired pole length in feet")
 ):
     """
     Get pole recommendation via Zeus
@@ -128,7 +160,7 @@ async def get_recommendation(
 
 @router.post("/compare")
 async def compare_poles(
-    length_ft: float = Field(..., description="Pole length in feet for comparison")
+    length_ft: float = Query(..., description="Pole length in feet for comparison")
 ):
     """
     Compare pole classes via Zeus
@@ -144,8 +176,8 @@ async def compare_poles(
 
 @router.post("/calculate/bending-moment")
 async def calculate_bending_moment(
-    load_lbs: float = Field(..., description="Horizontal load in pounds"),
-    height_ft: float = Field(..., description="Height from groundline in feet")
+    load_lbs: float = Query(..., description="Horizontal load in pounds"),
+    height_ft: float = Query(..., description="Height from groundline in feet")
 ):
     """
     Calculate bending moment via Zeus
@@ -164,8 +196,8 @@ async def calculate_bending_moment(
 
 @router.post("/calculate/decay-strength")
 async def calculate_decay_strength(
-    diameter_inches: float = Field(..., description="Original diameter in inches"),
-    decay_depth_inches: float = Field(..., description="Decay depth in inches")
+    diameter_inches: float = Query(..., description="Original diameter in inches"),
+    decay_depth_inches: float = Query(..., description="Decay depth in inches")
 ):
     """
     Calculate strength reduction from decay via Zeus
@@ -184,7 +216,7 @@ async def calculate_decay_strength(
 
 @router.post("/explain")
 async def explain_concept(
-    topic: str = Field(..., description="Topic to explain (e.g., 'fiber stress', 'pole classes', 'groundline')")
+    topic: str = Query(..., description="Topic to explain (e.g., 'fiber stress', 'pole classes', 'groundline')")
 ):
     """
     Get explanation of ANSI O5.1-2022 concepts via Zeus
@@ -263,7 +295,7 @@ async def get_examples():
 
 @router.post("/conversation")
 async def conversation(
-    messages: List[Dict[str, str]] = Field(..., description="Conversation history")
+    messages: List[Dict[str, str]] = Body(..., description="Conversation history")
 ):
     """
     Have a conversation with Zeus (maintains context)

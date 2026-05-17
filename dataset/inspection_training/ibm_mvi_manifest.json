@@ -1,0 +1,55 @@
+{
+  "dashboard_contract_file": "dataset\\inspection_training\\dashboard_contracts.jsonl",
+  "description": "Pole inspection model package generated from SVG exemplar scenes.",
+  "image_label_file": "dataset\\inspection_training\\ibm_mvi_image_labels.jsonl",
+  "message_file": "dataset\\inspection_training\\ibm_messages.jsonl",
+  "name": "amped-up-pole-inspection-v0.7",
+  "recommended_workflow": [
+    "Upload preview PNGs as image assets in IBM MVI.",
+    "Use ibm_mvi_image_labels.jsonl to map each image to classification labels.",
+    "Train detection/classification models for visible defect categories and severity.",
+    "Use ibm_messages.jsonl for a companion watsonx/LLM evaluation or tuning set.",
+    "Validate model output against dashboard_contracts.jsonl before enabling live report automation."
+  ],
+  "record_count": 230,
+  "scene_type_counts": {
+    "baseline": 18,
+    "multi_defect": 60,
+    "single_defect": 104,
+    "weather_context": 14,
+    "weather_damage": 18,
+    "weather_violation": 16
+  },
+  "severity_counts": {
+    "critical": 59,
+    "high": 91,
+    "low": 48,
+    "medium": 32
+  },
+  "source": "dataset/svgs/out",
+  "task_targets": [
+    "dashboard_severity",
+    "violation_type_id",
+    "violation_family",
+    "scene_type",
+    "weather_condition"
+  ],
+  "violation_type_counts": {
+    "none": 62,
+    "vt-equipment-leak": 31,
+    "vt-grounding-bonding": 17,
+    "vt-guying-anchor": 12,
+    "vt-identification-marking": 12,
+    "vt-joint-use-attachment": 5,
+    "vt-overhead-clearance": 24,
+    "vt-pole-condition": 32,
+    "vt-vegetation-contact": 35
+  },
+  "weather_condition_counts": {
+    "ice_loading": 16,
+    "none": 170,
+    "post_storm": 16,
+    "snow_accumulation": 14,
+    "summer_thermal": 14
+  }
+}

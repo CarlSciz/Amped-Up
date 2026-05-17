@@ -1,13 +1,13 @@
-import { SelectedReport } from '../types';
+import { SelectedReport, Severity } from '../types';
 
 interface ReportBannerProps {
   report: SelectedReport;
-  onSnooze: () => void;
+  onSeverityChange: (severity: Severity) => void;
   onDismiss: () => void;
   onApprove: () => void;
 }
 
-export function ReportBanner({ report, onSnooze, onDismiss, onApprove }: ReportBannerProps) {
+export function ReportBanner({ report, onSeverityChange, onDismiss, onApprove }: ReportBannerProps) {
   const submittedDate = new Date(report.submittedAt).toLocaleString('en-US', {
     month: 'long',
     day: 'numeric',
@@ -42,12 +42,19 @@ export function ReportBanner({ report, onSnooze, onDismiss, onApprove }: ReportB
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn" onClick={onSnooze}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-            </svg>
-            Snooze
-          </button>
+          <label className="severity-select-wrap">
+            <span>Severity</span>
+            <select
+              value={report.severity}
+              onChange={(event) => onSeverityChange(event.target.value as Severity)}
+              aria-label="Change report severity"
+            >
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </label>
           <button className="btn btn-dng" onClick={onDismiss}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

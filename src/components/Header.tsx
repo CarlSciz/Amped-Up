@@ -1,11 +1,14 @@
+import { ReactNode } from 'react';
 import { DashboardSummary, User } from '../types';
 
 interface HeaderProps {
   summary: DashboardSummary;
   currentUser: User;
+  filterControl?: ReactNode;
+  searchControl?: ReactNode;
 }
 
-export function Header({ summary, currentUser }: HeaderProps) {
+export function Header({ summary, currentUser, filterControl, searchControl }: HeaderProps) {
   const displayDate = new Date(summary.date).toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
@@ -29,23 +32,8 @@ export function Header({ summary, currentUser }: HeaderProps) {
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <button className="btn" aria-label="Filter">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-          </svg>
-          Filter
-        </button>
-        <button className="btn" aria-label="Search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-          </svg>
-          Search
-        </button>
-        <button className="btn icon-btn" aria-label="Notifications">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-        </button>
+        {filterControl}
+        {searchControl}
         <div
           className="avatar"
           style={{ width: 30, height: 30, fontSize: 11, background: '#1E40AF', color: '#DBEAFE' }}

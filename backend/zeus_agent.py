@@ -30,6 +30,7 @@ from backend.pole_inspection_rules import (
     DefectCategory,
     WeatherCondition
 )
+from backend.ibm_model_builder import build_ibm_model_package, get_ibm_model_build_plan
 
 
 class QueryType(Enum):
@@ -763,5 +764,22 @@ Decay depth: {decay} inches
             }
             for rule in rules
         ]
+
+    def get_ibm_model_build_plan(self) -> Dict:
+        """
+        Explain how Zeus can orchestrate IBM MVI model-building for this app.
+
+        Zeus owns standards, defect mappings, severity policy, and dashboard output
+        contracts. IBM MVI owns the visual model training and inference runtime.
+        """
+        return get_ibm_model_build_plan()
+
+    def build_ibm_mvi_training_package(self) -> Dict:
+        """
+        Generate local IBM MVI / watsonx training files from the SVG exemplar library.
+
+        Returns the package manifest with file paths and label distributions.
+        """
+        return build_ibm_model_package()
 
 # Made with Bob

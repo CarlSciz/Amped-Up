@@ -1,6 +1,8 @@
 import { FieldPhotos } from './components/FieldPhotos';
+import { DashboardFilters } from './components/DashboardFilters';
 import { GridMap } from './components/GridMap';
 import { Header } from './components/Header';
+import { HeaderSearch } from './components/HeaderSearch';
 import { IncomingReports } from './components/IncomingReports';
 import { KpiCards } from './components/KpiCards';
 import { PoleDetails } from './components/PoleDetails';
@@ -10,7 +12,7 @@ import { ReportNotes } from './components/ReportNotes';
 import { useDashboard } from './hooks/useDashboard';
 
 export function App() {
-  const { data, loading, error, connected, selectReport, addNote, updateReportStatus } = useDashboard();
+  const { data, loading, error, connected, filters, setFilters, search, setSearch, selectReport, addNote, updateReportStatus, updateReportSeverity } = useDashboard();
 
   const selectedReportId = data?.selectedReport?.id ?? null;
   const selectedPoleId = data?.selectedPole?.id ?? null;
@@ -76,14 +78,20 @@ export function App() {
         {connected ? 'Live' : 'Reconnecting…'}
       </div>
 
-      <Header summary={data.summary} currentUser={data.currentUser} />
+      <Header
+        summary={data.summary}
+        currentUser={data.currentUser}
+        filterControl={<DashboardFilters options={data.filters} value={filters} onChange={setFilters} />}
+        searchControl={<HeaderSearch value={search} onChange={setSearch} />}
+      />
 
       <KpiCards summary={data.summary} />
 
       {/* Map + report list */}
-      <div className="two-col-wide" style={{ marginBottom: 14 }}>
+      <div className="dashboard-main" style={{ marginBottom: 14 }}>
         <GridMap
           poles={data.mapPoles}
+          totalPoleCount={data.mapPoleCount}
           selectedPoleId={selectedPoleId}
           onSelectPole={handleSelectPole}
         />
@@ -98,7 +106,7 @@ export function App() {
       {data.selectedReport && (
         <ReportBanner
           report={data.selectedReport}
-          onSnooze={() => updateReportStatus(data.selectedReport!.id, 'snoozed')}
+          onSeverityChange={(severity) => updateReportSeverity(data.selectedReport!.id, severity)}
           onDismiss={() => updateReportStatus(data.selectedReport!.id, 'dismissed')}
           onApprove={() => updateReportStatus(data.selectedReport!.id, 'approved')}
         />

@@ -6,10 +6,14 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(messa
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import func as sa_func, select
 
+from . import orm_models as dbm
 from .dashboard import router as dashboard_router
 from .data import POLES, SEGMENTS, get_summary
+from .database import Base, SessionLocal, USING_DEFAULT_SQLITE, engine
 from .models import CircuitSegment, PoleRiskProfile, RiskBand, Summary
+from .zeus_api import router as zeus_router
 
 app = FastAPI(title="Amped Up", version="0.2.0")
 
@@ -35,6 +39,23 @@ app.add_middleware(
 )
 
 app.include_router(dashboard_router)
+app.include_router(zeus_router)
+
+
+@app.on_event("startup")
+def initialize_dev_database() -> None:
+    if not USING_DEFAULT_SQLITE:
+        return
+
+    Base.metadata.create_all(bind=engine)
+    with SessionLocal() as db:
+        user_count = db.scalar(select(sa_func.count()).select_from(dbm.User)) or 0
+    if user_count:
+        return
+
+    from .seed_dashboard_data import seed_dashboard_data
+
+    seed_dashboard_data()
 
 
 @app.get("/api/summary", response_model=Summary)

@@ -12,19 +12,62 @@ Field operations dashboard for utility pole inspection and risk tracking. Field 
 ### 1. Install backend dependencies
 
 ```bash
-pip3 install -r backend/requirements.txt
+python -m pip install -r backend/requirements.txt
 ```
 
-### 2. Start the backend
+### 2. Configure Supabase Postgres
+
+Create a Supabase project, then open **Project Settings > Database > Connection string**.
+Copy the URI connection string and put it in a local `.env` file:
+
+```env
+DATABASE_URL=postgresql://postgres.your-project-ref:your-password@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require
+```
+
+The app accepts Supabase URLs that start with `postgresql://` or `postgres://` and automatically uses the installed `psycopg` driver.
+
+Then create the schema and seed the dashboard data:
+
+```bash
+npm run db:upgrade
+npm run db:seed:violations
+npm run db:seed
+```
+
+If `DATABASE_URL` is not set, the backend falls back to a local `amped_up_dev.db` SQLite database for quick development only.
+
+### 3. Start the backend
 
 Run from the **project root** (the backend uses relative imports and must be launched as a package):
 
 ```bash
 npm run backend
-# equivalent: python3 -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+# equivalent: python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-### 3. Start the frontend
+### Seed DTE OSM pole inventory
+
+The dashboard seed task imports `dte_osm_poles.csv` from the project root and falls back to `dte_osm_poles.geojson` if the CSV is unavailable:
+
+```bash
+python -m backend.seed_dashboard_data
+```
+
+The original GeoJSON is also available from the backend at `/api/dashboard/osm-poles.geojson`.
+
+Seeded mock records use Detroit neighborhoods and corridors such as Downtown, Corktown, Midtown, Eastern Market, Mexicantown, New Center, Rivertown, Boston-Edison, Southwest Detroit, and East English Village. Imported OSM pole nodes are labeled with the nearest Detroit area and DTE-style feeder name.
+
+### Build inspection training data
+
+The SVG exemplar library can be exported into model-ready JSONL records for IBM/watsonx adaptation or evaluation:
+
+```bash
+python scripts/export_inspection_training_data.py
+```
+
+This writes `dataset/inspection_training/inspection_records.jsonl`, `ibm_messages.jsonl`, and `dashboard_contracts.jsonl`. Each record maps the SVG/preview image to pole specifications, defect labels, regulatory references, dashboard severity, violation type, evidence requirements, and recommended action.
+
+### 4. Start the frontend
 
 In a separate terminal:
 
@@ -121,5 +164,8 @@ Request body:
 |--------|---------|
 | `npm run dev` | Start Vite dev server at `127.0.0.1:5173` |
 | `npm run backend` | Start FastAPI at `127.0.0.1:8000` with hot reload |
+| `npm run db:upgrade` | Apply Alembic migrations to `DATABASE_URL` |
+| `npm run db:seed:violations` | Seed NESC violation type metadata |
+| `npm run db:seed` | Seed dashboard users, Detroit poles, reports, photos, and history |
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Preview production build |
