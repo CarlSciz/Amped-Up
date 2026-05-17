@@ -1,0 +1,43 @@
+MVI-ZEUS INTEGRATED POLE INSPECTION REPORT
+================================================================================
+
+Pole ID: POLE-001
+Image: picture/20260516_171832.jpg
+Timestamp: 2026-05-16T19:11:37.848538
+
+MVI DETECTIONS
+--------------------------------------------------------------------------------
+• transformer_corrosion: 95.0%
+• crossarm_decay: 87.0%
+• hardware_corrosion: 82.0%
+
+
+ZEUS ANALYSIS
+--------------------------------------------------------------------------------
+
+1. Transformer Corrosion [SERIOUS]
+   Category: equipment
+   Description: MVI detected transformer corrosion with 95.0% confidence
+   Action: Inspect and address transformer corrosion as needed
+   Standards: NESC 2023 Rule 214A (Equipment Maintenance)
+
+2. Crossarm Decay [OTHER_THAN_SERIOUS]
+   Category: structural
+   Description: MVI detected crossarm decay with 87.0% confidence
+   Action: Inspect and address crossarm decay as needed
+   Standards: NESC 2023 Rule 261 (Strength Requirements)
+
+3. Hardware Corrosion [OTHER_THAN_SERIOUS]
+   Category: hardware
+   Description: MVI detected hardware corrosion with 82.0% confidence
+   Action: Inspect and address hardware corrosion as needed
+   Standards: NESC 2023 Rule 261 (Strength Requirements)
+
+
+WORK ORDER
+--------------------------------------------------------------------------------
+Number: WO-20260516191137
+Priority: 2
+Description: URGENT: Pole inspection identified 3 defects including 1 serious issue(s) requiring immediate attention.
+Estimated Hours: 6
+Required Skills: Electrical, Structural

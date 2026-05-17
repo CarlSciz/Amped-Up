@@ -1,0 +1,78 @@
+{
+  "pole_id": "POLE-001",
+  "image_path": "picture/20260516_171832.jpg",
+  "timestamp": "2026-05-16T19:11:12.875537",
+  "mvi_detections": {
+    "image": "picture/20260516_171832.jpg",
+    "model_id": "pole-inspection-v1",
+    "classified": [
+      {
+        "label": "transformer_corrosion",
+        "confidence": 0.95,
+        "bbox": [
+          120,
+          80,
+          280,
+          220
+        ]
+      },
+      {
+        "label": "crossarm_decay",
+        "confidence": 0.87,
+        "bbox": [
+          50,
+          150,
+          350,
+          180
+        ]
+      },
+      {
+        "label": "hardware_corrosion",
+        "confidence": 0.82,
+        "bbox": [
+          200,
+          100,
+          240,
+          140
+        ]
+      }
+    ],
+    "detection_time_ms": 245
+  },
+  "zeus_analysis": {
+    "defects": [],
+    "severity_summary": {
+      "imminent_danger": 0,
+      "serious": 0,
+      "other_than_serious": 0,
+      "deminimis": 0,
+      "multi_defect": 0
+    },
+    "compliance_issues": [],
+    "priority_actions": [],
+    "standards_references": []
+  },
+  "work_order": {
+    "wonum": "WO-20260516191112",
+    "pole_id": "POLE-001",
+    "work_type": "INSPECTION",
+    "priority": 5,
+    "status": "WAPPR",
+    "description": "Pole inspection identified 0 defects requiring maintenance action.",
+    "long_description": "POLE INSPECTION FINDINGS\n\n",
+    "estimated_hours": 0,
+    "required_skills": [],
+    "defect_count": 0,
+    "compliance_standards": [],
+    "created_date": "2026-05-16T19:11:12.875527",
+    "target_completion": "2027-05-16T19:11:12.875531"
+  },
+  "summary": {
+    "total_defects": 0,
+    "critical_count": 0,
+    "serious_count": 0,
+    "requires_immediate_action": false,
+    "compliance_issues_count": 0,
+    "standards_affected": 0
+  }
+}

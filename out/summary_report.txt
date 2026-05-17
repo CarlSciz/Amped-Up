@@ -1,0 +1,45 @@
+POLE INSPECTION SUMMARY REPORT
+================================================================================
+
+Analysis Date: 2026-05-16 17:59:09
+Total Images Analyzed: 3
+
+OVERALL SEVERITY SUMMARY
+--------------------------------------------------------------------------------
+Serious: 3
+Other Than Serious: 6
+Deminimis: 6
+Multi Defect: 3
+
+
+KEY FINDINGS
+--------------------------------------------------------------------------------
+• Transformer oil staining/corrosion detected - IMMEDIATE ATTENTION REQUIRED
+• Multiple crossarms showing weathering and potential decay
+• Hardware corrosion present on various components
+• General aging consistent with outdoor utility infrastructure
+
+
+PRIORITY ACTIONS
+--------------------------------------------------------------------------------
+1. IMMEDIATE: Inspect left transformer for oil leaks and tank integrity
+2. NEAR-TERM: Conduct structural assessment of all crossarms
+3. NEAR-TERM: Inspect and replace corroded hardware as needed
+4. ROUTINE: Continue monitoring pole and insulator condition
+
+
+COMPLIANCE NOTES
+--------------------------------------------------------------------------------
+This pole requires attention to maintain compliance with:
+• NESC 2023 Rules 214A, 215, 261, 261A, 261H
+• OSHA 1910.269(a)(2)(i)
+• Michigan PSC utility pole inspection requirements
+
+
+NEXT STEPS
+--------------------------------------------------------------------------------
+1. Schedule comprehensive on-site inspection within 30 days
+2. Conduct transformer oil analysis
+3. Perform crossarm load testing
+4. Update maintenance records
+5. Plan remediation work based on detailed inspection findings

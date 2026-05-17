@@ -173,6 +173,76 @@ class PoleInspectionRules:
             weather_sensitive=True
         )
         
+        rules["broken_crossarm"] = DefectRule(
+            defect_id="broken_crossarm",
+            name="Broken Crossarm",
+            category=DefectCategory.STRUCTURAL,
+            severity=DefectSeverity.IMMINENT_DANGER,
+            description="Complete or partial failure of crossarm structure, often from ice loading or decay",
+            nesc_reference="NESC 261.H",
+            osha_reference="OSHA 1910.269(a)(2)",
+            detection_criteria={
+                "failure_types": ["complete_break", "partial_failure", "ice_damage"],
+                "3d_model_class_id": 2,
+                "bbox_detection": True
+            },
+            corrective_action="Immediate line de-energization and crossarm replacement",
+            weather_sensitive=True
+        )
+        
+        rules["downed_conductor"] = DefectRule(
+            defect_id="downed_conductor",
+            name="Downed Conductor",
+            category=DefectCategory.STRUCTURAL,
+            severity=DefectSeverity.IMMINENT_DANGER,
+            description="Conductor fallen or hanging dangerously low, often result of broken crossarm or insulator failure",
+            nesc_reference="NESC 232, 261",
+            osha_reference="OSHA 1910.269(a)(2)",
+            detection_criteria={
+                "min_ground_clearance_ft": 0,
+                "conductor_state": ["downed", "hanging", "sagging_critical"],
+                "3d_model_class_id": 3,
+                "bbox_detection": True
+            },
+            corrective_action="Immediate area isolation, line de-energization, emergency repair",
+            weather_sensitive=True
+        )
+        
+        rules["veg_contact_branch"] = DefectRule(
+            defect_id="veg_contact_branch",
+            name="Vegetation Contact - Branch",
+            category=DefectCategory.VEGETATION,
+            severity=DefectSeverity.IMMINENT_DANGER,
+            description="Tree branch in direct physical contact with energized conductor",
+            nesc_reference="NESC 218.A",
+            michigan_reference="MPSC R 460.3504",
+            detection_criteria={
+                "contact_type": "direct_branch",
+                "min_clearance_ft": 0,
+                "3d_model_class_id": 1,
+                "bbox_detection": True
+            },
+            corrective_action="Immediate vegetation removal or line de-energization",
+            weather_sensitive=True
+        )
+        
+        rules["ice_buildup"] = DefectRule(
+            defect_id="ice_buildup",
+            name="Ice Accumulation on Conductors",
+            category=DefectCategory.WEATHER_INDUCED,
+            severity=DefectSeverity.SERIOUS,
+            description="Ice accumulation on conductors creating excessive loading",
+            nesc_reference="NESC 250.B (Heavy Loading District)",
+            detection_criteria={
+                "ice_thickness_inches": 0.5,
+                "loading_condition": "heavy_district",
+                "3d_model_class_id": 4,
+                "bbox_detection": True
+            },
+            corrective_action="Monitor loading, potential line de-icing or load reduction",
+            weather_sensitive=True
+        )
+        
         rules["crossarm_decay"] = DefectRule(
             defect_id="crossarm_decay",
             name="Crossarm Decay",
@@ -298,6 +368,177 @@ class PoleInspectionRules:
             },
             corrective_action="Immediate line de-energization and repair",
             weather_sensitive=True
+        )
+        
+        # WEATHER-INDUCED DEFECTS (from SVG library v0.7)
+        rules["ice_sag_violation"] = DefectRule(
+            defect_id="ice_sag_violation",
+            name="Ice Loading Clearance Violation",
+            category=DefectCategory.WEATHER_INDUCED,
+            severity=DefectSeverity.SERIOUS,
+            description="Ice accumulation causing conductor sag below minimum clearance",
+            nesc_reference="NESC 250.B Heavy Loading District, NESC 232",
+            detection_criteria={
+                "ice_thickness_inches": 0.5,
+                "clearance_violation": True,
+                "loading_condition": "heavy_district"
+            },
+            corrective_action="Monitor loading, potential de-icing or temporary support",
+            weather_sensitive=True
+        )
+        
+        rules["summer_thermal_sag"] = DefectRule(
+            defect_id="summer_thermal_sag",
+            name="Summer Thermal Sag Violation",
+            category=DefectCategory.WEATHER_INDUCED,
+            severity=DefectSeverity.SERIOUS,
+            description="Excessive conductor sag at high temperature below clearance limits",
+            nesc_reference="NESC 232 at max temp, IEEE 738",
+            detection_criteria={
+                "conductor_temp_celsius": 75,
+                "clearance_violation": True,
+                "thermal_rating_exceeded": True
+            },
+            corrective_action="Conductor re-tensioning or reconductoring with higher temp rating",
+            weather_sensitive=True
+        )
+        
+        rules["broken_crossarm_ice"] = DefectRule(
+            defect_id="broken_crossarm_ice",
+            name="Broken Crossarm from Ice Loading",
+            category=DefectCategory.STRUCTURAL,
+            severity=DefectSeverity.IMMINENT_DANGER,
+            description="Crossarm failure due to excessive ice loading beyond design capacity",
+            nesc_reference="NESC 250.B, NESC 261",
+            osha_reference="OSHA 1910.269",
+            detection_criteria={
+                "ice_loading": True,
+                "arm_failure": True,
+                "conductor_affected": True
+            },
+            corrective_action="Immediate line de-energization and emergency crossarm replacement",
+            weather_sensitive=True
+        )
+        
+        rules["downed_conductor_storm"] = DefectRule(
+            defect_id="downed_conductor_storm",
+            name="Downed Conductor from Storm Damage",
+            category=DefectCategory.STRUCTURAL,
+            severity=DefectSeverity.IMMINENT_DANGER,
+            description="Conductor down or dangerously low after storm damage (wind, lightning)",
+            nesc_reference="NESC 232, NESC 261",
+            osha_reference="OSHA 1910.269",
+            detection_criteria={
+                "conductor_state": "downed_or_low",
+                "storm_damage": True,
+                "public_hazard": True
+            },
+            corrective_action="Immediate area isolation, line de-energization, emergency repair",
+            weather_sensitive=True
+        )
+        
+        # ADDITIONAL HARDWARE DEFECTS (from SVG library)
+        rules["strain_insulator_damaged"] = DefectRule(
+            defect_id="strain_insulator_damaged",
+            name="Strain Insulator Damaged",
+            category=DefectCategory.INSULATION,
+            severity=DefectSeverity.SERIOUS,
+            description="Cracked or chipped strain insulator at dead-end or angle pole",
+            nesc_reference="NESC 277, ANSI C29",
+            detection_criteria={
+                "insulator_type": "strain",
+                "damage_type": ["crack", "chip", "shatter"]
+            },
+            corrective_action="Insulator replacement with line support",
+            weather_sensitive=True
+        )
+        
+        rules["clamp_slipped"] = DefectRule(
+            defect_id="clamp_slipped",
+            name="Conductor Clamp Slipped",
+            category=DefectCategory.HARDWARE,
+            severity=DefectSeverity.SERIOUS,
+            description="Conductor clamp has slipped from proper position",
+            detection_criteria={
+                "clamp_position": "displaced",
+                "conductor_security": "compromised"
+            },
+            corrective_action="Re-clamp conductor with proper tension",
+            weather_sensitive=False
+        )
+        
+        rules["jumper_damaged"] = DefectRule(
+            defect_id="jumper_damaged",
+            name="Jumper Wire Damaged",
+            category=DefectCategory.HARDWARE,
+            severity=DefectSeverity.SERIOUS,
+            description="Jumper wire damaged, frayed, or improperly connected",
+            detection_criteria={
+                "jumper_condition": ["frayed", "broken", "loose"]
+            },
+            corrective_action="Jumper replacement",
+            weather_sensitive=False
+        )
+        
+        rules["cutout_hanging"] = DefectRule(
+            defect_id="cutout_hanging",
+            name="Cutout Hanging or Dislodged",
+            category=DefectCategory.HARDWARE,
+            severity=DefectSeverity.SERIOUS,
+            description="Fuse cutout hanging loose or dislodged from mount",
+            detection_criteria={
+                "cutout_position": "displaced",
+                "mounting": "loose"
+            },
+            corrective_action="Cutout remounting or replacement",
+            weather_sensitive=True
+        )
+        
+        # SERVICE-SPECIFIC DEFECTS
+        rules["open_neutral"] = DefectRule(
+            defect_id="open_neutral",
+            name="Open Neutral Connection",
+            category=DefectCategory.GROUNDING,
+            severity=DefectSeverity.SERIOUS,
+            description="Neutral conductor open or improperly connected",
+            nesc_reference="NESC 230",
+            detection_criteria={
+                "neutral_continuity": False,
+                "connection_type": "service"
+            },
+            corrective_action="Immediate neutral repair and testing",
+            weather_sensitive=False
+        )
+        
+        rules["unauthorized_attachment"] = DefectRule(
+            defect_id="unauthorized_attachment",
+            name="Unauthorized Attachment",
+            category=DefectCategory.ATTACHMENT,
+            severity=DefectSeverity.OTHER_THAN_SERIOUS,
+            description="Unauthorized equipment or wiring attached to utility pole",
+            michigan_reference="MPSC R 460.601",
+            detection_criteria={
+                "attachment_authorized": False,
+                "attachment_type": ["antenna", "cable", "sign", "other"]
+            },
+            corrective_action="Remove unauthorized attachment, notify owner",
+            weather_sensitive=False
+        )
+        
+        # IDENTIFICATION DEFECTS
+        rules["pole_number_illegible"] = DefectRule(
+            defect_id="pole_number_illegible",
+            name="Pole Number Illegible",
+            category=DefectCategory.IDENTIFICATION,
+            severity=DefectSeverity.DE_MINIMIS,
+            description="Pole identification number faded, missing, or illegible",
+            michigan_reference="MPSC R 460.601",
+            detection_criteria={
+                "id_readable": False,
+                "id_condition": ["faded", "missing", "damaged"]
+            },
+            corrective_action="Replace or repaint pole identification tag",
+            weather_sensitive=False
         )
         
         # GROUNDING DEFECTS (NESC 97)

@@ -1,0 +1,25 @@
+MVI-ZEUS INTEGRATED POLE INSPECTION REPORT
+================================================================================
+
+Pole ID: POLE-001
+Image: picture/20260516_171832.jpg
+Timestamp: 2026-05-16T19:10:23.188342
+
+MVI DETECTIONS
+--------------------------------------------------------------------------------
+• transformer_corrosion: 95.0%
+• crossarm_decay: 87.0%
+• hardware_corrosion: 82.0%
+
+
+ZEUS ANALYSIS
+--------------------------------------------------------------------------------
+
+
+WORK ORDER
+--------------------------------------------------------------------------------
+Number: WO-20260516191023
+Priority: 5
+Description: Pole inspection identified 0 defects requiring maintenance action.
+Estimated Hours: 0
+Required Skills: 

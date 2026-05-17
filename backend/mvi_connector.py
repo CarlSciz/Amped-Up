@@ -558,3 +558,159 @@ class MVIConnector:
 
 
 # Made with Bob
+    def analyze_multiple_pole_images(
+        self,
+        image_paths: List[str],
+        pole_id: Optional[str] = None
+    ) -> Dict:
+        """
+        Analyze multiple images (up to 3) of the same pole using MVI + Zeus
+        
+        This method:
+        1. Sends all images to MVI for defect detection
+        2. Uses Zeus to analyze and correlate findings across images
+        3. Generates consolidated work order
+        
+        Args:
+            image_paths: List of 1-3 image paths to analyze
+            pole_id: Optional pole identifier
+            
+        Returns:
+            Dictionary with consolidated multi-image analysis results
+        """
+        if not image_paths:
+            raise ValueError("At least one image path must be provided")
+        
+        if len(image_paths) > 3:
+            raise ValueError("Maximum of 3 images can be analyzed at once")
+        
+        # Generate pole ID if not provided
+        if not pole_id:
+            pole_id = f"POLE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        
+        print(f"\n{'=' * 80}")
+        print(f"MVI-ZEUS MULTI-IMAGE ANALYSIS")
+        print(f"{'=' * 80}")
+        print(f"Pole ID: {pole_id}")
+        print(f"Images: {len(image_paths)}")
+        
+        # Analyze each image with MVI
+        mvi_results = []
+        for i, image_path in enumerate(image_paths, 1):
+            print(f"\n[{i}/{len(image_paths)}] Processing with MVI: {image_path}")
+            mvi_result = self._call_mvi_api(image_path)
+            mvi_results.append({
+                "image_id": f"IMG-{i}",
+                "image_path": image_path,
+                "mvi_detections": mvi_result
+            })
+        
+        # Use Zeus for multi-image analysis
+        print(f"\nConsolidating findings with Zeus...")
+        zeus_analysis = self.zeus.analyze_multiple_images(
+            image_paths=image_paths,
+            pole_id=pole_id
+        )
+        
+        # Generate consolidated work order
+        work_order = self._generate_work_order_from_multi_image(
+            pole_id,
+            zeus_analysis
+        )
+        
+        # Compile results
+        results = {
+            "pole_id": pole_id,
+            "timestamp": datetime.now().isoformat(),
+            "image_count": len(image_paths),
+            "mvi_results": mvi_results,
+            "zeus_multi_analysis": {
+                "consolidated_defects": zeus_analysis.consolidated_defects,
+                "overall_severity": zeus_analysis.overall_severity,
+                "cross_image_correlations": zeus_analysis.cross_image_correlations,
+                "confidence_scores": zeus_analysis.confidence_scores,
+                "recommendations": zeus_analysis.recommendations,
+                "summary": zeus_analysis.summary
+            },
+            "work_order": work_order,
+            "summary": {
+                "total_defects": len(zeus_analysis.consolidated_defects),
+                "critical_count": zeus_analysis.overall_severity.get("imminent_danger", 0),
+                "serious_count": zeus_analysis.overall_severity.get("serious", 0),
+                "requires_immediate_action": zeus_analysis.overall_severity.get("imminent_danger", 0) > 0,
+                "multi_view_confirmations": len([d for d in zeus_analysis.consolidated_defects if d["image_count"] > 1])
+            }
+        }
+        
+        print(f"\n{'=' * 80}")
+        print(f"MULTI-IMAGE ANALYSIS COMPLETE")
+        print(f"{'=' * 80}")
+        print(f"Total defects: {results['summary']['total_defects']}")
+        print(f"Multi-view confirmations: {results['summary']['multi_view_confirmations']}")
+        print(f"Overall confidence: {zeus_analysis.confidence_scores['overall_analysis']:.1%}")
+        
+        return results
+    
+    def _generate_work_order_from_multi_image(
+        self,
+        pole_id: str,
+        zeus_analysis
+    ) -> Dict:
+        """
+        Generate work order from multi-image Zeus analysis
+        
+        Args:
+            pole_id: Pole identifier
+            zeus_analysis: MultiImageAnalysis object from Zeus
+            
+        Returns:
+            Work order dictionary
+        """
+        # Determine priority based on severity
+        severity = zeus_analysis.overall_severity
+        if severity.get("imminent_danger", 0) > 0:
+            priority = 1
+            estimated_hours = 8
+        elif severity.get("serious", 0) > 0:
+            priority = 2
+            estimated_hours = 4
+        elif severity.get("other_than_serious", 0) > 0:
+            priority = 3
+            estimated_hours = 2
+        else:
+            priority = 4
+            estimated_hours = 1
+        
+        # Build description
+        description = f"Multi-image inspection of pole {pole_id}. "
+        description += zeus_analysis.summary
+        
+        # Determine required skills
+        required_skills = set()
+        for defect in zeus_analysis.consolidated_defects:
+            category = defect.get("category", "")
+            if category == "vegetation":
+                required_skills.add("vegetation_management")
+            elif category == "structural":
+                required_skills.add("structural_repair")
+            elif category == "equipment":
+                required_skills.add("equipment_maintenance")
+            elif category == "hardware":
+                required_skills.add("hardware_replacement")
+        
+        if not required_skills:
+            required_skills.add("general_inspection")
+        
+        return {
+            "wonum": f"WO-{pole_id}-{datetime.now().strftime('%Y%m%d%H%M')}",
+            "pole_id": pole_id,
+            "priority": priority,
+            "description": description,
+            "estimated_hours": estimated_hours,
+            "required_skills": list(required_skills),
+            "defect_count": len(zeus_analysis.consolidated_defects),
+            "image_count": len(zeus_analysis.images),
+            "multi_view_confirmations": len([d for d in zeus_analysis.consolidated_defects if d["image_count"] > 1]),
+            "created_date": datetime.now().isoformat(),
+            "status": "NEW"
+        }

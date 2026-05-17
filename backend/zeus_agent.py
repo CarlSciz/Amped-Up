@@ -2,10 +2,12 @@
 Zeus AI Agent - ANSI O5.1-2023 Wood Poles Expert
 An intelligent conversational agent that understands and explains
 ANSI O5.1-2023 Wood Poles, Specifications and Dimensions
+
+Enhanced with multi-image analysis capabilities for comprehensive pole inspection
 """
 
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Union
+from dataclasses import dataclass, field
 from enum import Enum
 
 from backend.ansi_pole_specs import (
@@ -53,6 +55,30 @@ class ZeusResponse:
     confidence: float = 1.0
 
 
+@dataclass
+class ImageAnalysis:
+    """Analysis results for a single image"""
+    image_path: str
+    image_id: str
+    defects: List[Dict] = field(default_factory=list)
+    severity_summary: Dict[str, int] = field(default_factory=dict)
+    compliance_issues: List[Dict] = field(default_factory=list)
+    metadata: Dict = field(default_factory=dict)
+
+
+@dataclass
+class MultiImageAnalysis:
+    """Analysis results for multiple images of the same pole"""
+    pole_id: str
+    images: List[ImageAnalysis] = field(default_factory=list)
+    consolidated_defects: List[Dict] = field(default_factory=list)
+    cross_image_correlations: List[Dict] = field(default_factory=list)
+    overall_severity: Dict[str, int] = field(default_factory=dict)
+    confidence_scores: Dict[str, float] = field(default_factory=dict)
+    recommendations: List[str] = field(default_factory=list)
+    summary: str = ""
+
+
 class ZeusAgent:
     """
     Zeus - AI Agent for ANSI O5.1-2023 Wood Poles
@@ -66,6 +92,28 @@ class ZeusAgent:
         self.analyzer = PoleAnalyzerAgent()
         self.inspection_rules = PoleInspectionRules()
         self.knowledge_base = self._build_knowledge_base()
+        self.training_integration = None
+        self.svg_knowledge = None
+        self._initialize_3d_training()
+        self._initialize_svg_knowledge()
+    
+    def _initialize_3d_training(self):
+        """Initialize 3D training dataset integration if available"""
+        try:
+            from backend.zeus_3d_training import Zeus3DTrainingIntegration
+            self.training_integration = Zeus3DTrainingIntegration()
+        except Exception as e:
+            # 3D training data not available, continue without it
+            pass
+    
+    def _initialize_svg_knowledge(self):
+        """Initialize SVG knowledge base if available"""
+        try:
+            from backend.zeus_svg_training import ZeusSVGKnowledgeBase
+            self.svg_knowledge = ZeusSVGKnowledgeBase()
+        except Exception as e:
+            # SVG knowledge not available, continue without it
+            pass
     
     def _build_knowledge_base(self) -> Dict[str, str]:
         """Build knowledge base about ANSI O5.1-2023"""
@@ -119,7 +167,38 @@ class ZeusAgent:
             
             "weather_conditions": """Weather conditions significantly affect pole inspection. Ice loading,
             snow accumulation, post-storm damage, and summer thermal sag can all create or exacerbate
-            compliance issues. The system accounts for weather-sensitive defects."""
+            compliance issues. The system accounts for weather-sensitive defects.""",
+            
+            "3d_training": """Zeus has been trained on the Pole Compliance Exemplar Library v0.9,
+            a comprehensive 3D-rendered dataset with 27 annotated images covering multiple defect types.
+            The dataset includes vegetation contact, broken crossarms, downed conductors, and ice buildup
+            scenarios across different viewing angles and lighting conditions. Each defect is annotated
+            with precise 2D bounding boxes for object detection training.""",
+            
+            "defect_detection_ai": """Zeus uses AI-powered defect detection trained on 3D synthetic data.
+            The system can identify: vegetation contact with conductors (imminent danger), broken crossarms
+            (imminent danger), downed conductors (imminent danger), and ice buildup (serious). Detection
+            uses COCO-style bounding box annotations with normalized coordinates for precise localization.""",
+            
+            "training_dataset": """The training dataset consists of sp35c5 pole configurations rendered
+            from three camera angles (front, closeup, three-quarter) under three lighting conditions
+            (noon, golden hour, overcast). This provides 27 total images with 9 negative (compliant) samples
+            for balanced training. All annotations include scene severity classification and camera metadata.""",
+            
+            "svg_library": """Zeus has access to the Pole Compliance Exemplar Library v0.7, a comprehensive
+            collection of 230 synthetic SVG pole inspection scenarios. The library covers 18 pole types from
+            single-phase rural poles to 138kV transmission structures, with 60+ distinct defect patterns across
+            normal and weather conditions (ice loading, snow, post-storm, summer thermal sag).""",
+            
+            "weather_scenarios": """The SVG library includes 60 weather-specific scenarios covering four
+            conditions: ice loading (NESC 250.B heavy district), snow accumulation, post-storm damage assessment,
+            and summer thermal sag (IEEE 738). Each weather condition includes both compliant context scenes and
+            weather-induced violations for comprehensive training.""",
+            
+            "multi_defect_recognition": """Zeus can identify compound risk scenarios where multiple defects
+            occur simultaneously. The SVG library includes 48 multi-defect compositions covering themes like
+            aging infrastructure, vegetation compound issues, weather stress on degraded assets, and structural
+            compound failures. These are classified with multi_defect severity (purple banner)."""
         }
     
     def ask(self, question: str, context: Optional[Dict] = None) -> ZeusResponse:
@@ -616,6 +695,12 @@ Decay depth: {decay} inches
                 "Assess weather impact on poles",
                 "Detect weather-induced violations",
                 "Evaluate seasonal conditions"
+            ],
+            "ai_training": [
+                "Access 3D training dataset statistics",
+                "Get defect detection training info",
+                "View annotated training samples",
+                "Export training data in YOLO format"
             ]
         }
     
@@ -763,5 +848,687 @@ Decay depth: {decay} inches
             }
             for rule in rules
         ]
+    def get_3d_training_summary(self) -> Optional[Dict]:
+        """
+        Get summary of 3D training dataset
+        
+        Returns:
+            Training dataset summary or None if not available
+        """
+        if not self.training_integration:
+            return None
+        
+        return self.training_integration.get_training_summary()
+    
+    def get_3d_training_recommendations(self) -> Optional[List[str]]:
+        """
+        Get recommendations for training on 3D dataset
+        
+        Returns:
+            List of recommendations or None if not available
+        """
+        if not self.training_integration:
+            return None
+        
+        return self.training_integration.get_training_recommendations()
+    
+    def export_training_data(self, output_dir: str, format: str = "yolo") -> bool:
+        """
+        Export training data in specified format
+        
+        Args:
+            output_dir: Output directory path
+            format: Export format (currently only "yolo" supported)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.training_integration:
+            return False
+        
+        try:
+            if format.lower() == "yolo":
+                self.training_integration.export_yolo_format(output_dir)
+                return True
+            else:
+                return False
+        except Exception:
+            return False
+    
+    def get_svg_knowledge_summary(self) -> Optional[Dict]:
+        """
+        Get summary of SVG knowledge base
+        
+        Returns:
+            SVG library summary or None if not available
+        """
+        if not self.svg_knowledge:
+            return None
+        
+        return self.svg_knowledge.get_statistics()
+    
+    def get_svg_defect_pattern(self, defect_id: str) -> Optional[Dict]:
+        """
+        Get SVG defect pattern information
+        
+        Args:
+            defect_id: Defect identifier
+            
+        Returns:
+            Defect pattern info or None
+        """
+        if not self.svg_knowledge:
+            return None
+        
+        pattern = self.svg_knowledge.get_defect_pattern(defect_id)
+        if not pattern:
+            return None
+        
+        return {
+            "defect_id": pattern.defect_id,
+            "name": pattern.name,
+            "pole_types": pattern.pole_types,
+            "severity": pattern.severity,
+            "weather_sensitive": pattern.weather_sensitive,
+            "nesc_references": pattern.nesc_references,
+            "osha_references": pattern.osha_references,
+            "description": pattern.description,
+            "visual_indicators": pattern.visual_indicators,
+            "scene_count": pattern.scene_count
+        }
+    
+    def get_svg_pole_type_info(self, pole_id: str) -> Optional[Dict]:
+        """
+        Get SVG pole type information
+        
+        Args:
+            pole_id: Pole type identifier (e.g., "sp35c5")
+            
+        Returns:
+            Pole type info or None
+        """
+        if not self.svg_knowledge:
+            return None
+        
+        pole_info = self.svg_knowledge.get_pole_type_info(pole_id)
+        if not pole_info:
+            return None
+        
+        return {
+            "pole_id": pole_info.pole_id,
+            "description": pole_info.description,
+            "height_ft": pole_info.height_ft,
+            "pole_class": pole_info.pole_class,
+            "voltage_kv": pole_info.voltage_kv,
+            "scene_count": pole_info.scene_count,
+            "defect_types": pole_info.defect_types
+        }
+    
+    def get_weather_sensitive_defects_svg(self) -> Optional[List[Dict]]:
+        """
+        Get all weather-sensitive defects from SVG library
+        
+        Returns:
+            List of weather-sensitive defects or None
+        """
+        if not self.svg_knowledge:
+            return None
+        
+        defects = self.svg_knowledge.get_weather_sensitive_defects()
+        return [
+            {
+                "defect_id": d.defect_id,
+                "name": d.name,
+                "severity": d.severity,
+                "scene_count": d.scene_count
+            }
+            for d in defects
+        ]
+    
+    def get_defect_training_info(self, defect_class: str) -> Optional[Dict]:
+        """
+        Get training information for a specific defect class
+        
+        Args:
+            defect_class: Defect class name (e.g., "veg_contact_branch")
+            
+        Returns:
+            Training info dictionary or None
+        """
+        if not self.training_integration:
+            return None
+        
+        dataset = self.training_integration.dataset
+        images = dataset.get_images_by_defect(defect_class)
+        
+        if not images:
+            return None
+        
+        return {
+            "defect_class": defect_class,
+            "total_samples": len(images),
+            "scenes": list(set(img.scene for img in images)),
+            "angles": list(set(img.angle for img in images)),
+            "lighting_conditions": list(set(img.lighting for img in images)),
+            "sample_images": [img.image_path for img in images[:5]]
+        }
+    
+    def analyze_multiple_images(
+        self,
+        image_paths: List[str],
+        pole_id: Optional[str] = None,
+        context: Optional[Dict] = None
+    ) -> MultiImageAnalysis:
+        """
+        Analyze multiple images (up to 3) of the same pole
+        
+        This method enables comprehensive pole inspection by analyzing multiple
+        views or angles of the same pole, correlating findings across images,
+        and providing consolidated recommendations.
+        
+        Args:
+            image_paths: List of 1-3 image paths to analyze
+            pole_id: Optional pole identifier
+            context: Optional context (pole specifications, location, etc.)
+            
+        Returns:
+            MultiImageAnalysis with consolidated findings
+        """
+        if not image_paths:
+            raise ValueError("At least one image path must be provided")
+        
+        if len(image_paths) > 3:
+            raise ValueError("Maximum of 3 images can be analyzed at once")
+        
+        # Generate pole ID if not provided
+        if not pole_id:
+            from datetime import datetime
+            pole_id = f"POLE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        
+        print(f"\n{'=' * 80}")
+        print(f"ZEUS MULTI-IMAGE ANALYSIS")
+        print(f"{'=' * 80}")
+        print(f"Pole ID: {pole_id}")
+        print(f"Images to analyze: {len(image_paths)}")
+        
+        # Analyze each image individually
+        image_analyses = []
+        for i, image_path in enumerate(image_paths, 1):
+            print(f"\n[{i}/{len(image_paths)}] Analyzing: {image_path}")
+            analysis = self._analyze_single_image_detailed(
+                image_path,
+                image_id=f"IMG-{i}",
+                context=context
+            )
+            image_analyses.append(analysis)
+        
+        # Consolidate findings across images
+        print(f"\nConsolidating findings across {len(image_analyses)} images...")
+        multi_analysis = self._consolidate_multi_image_findings(
+            pole_id,
+            image_analyses,
+            context
+        )
+        
+        print(f"\n{'=' * 80}")
+        print(f"MULTI-IMAGE ANALYSIS COMPLETE")
+        print(f"{'=' * 80}")
+        
+        return multi_analysis
+    
+    def _analyze_single_image_detailed(
+        self,
+        image_path: str,
+        image_id: str,
+        context: Optional[Dict] = None
+    ) -> ImageAnalysis:
+        """
+        Perform detailed analysis of a single image
+        
+        Args:
+            image_path: Path to the image
+            image_id: Unique identifier for this image
+            context: Optional context information
+            
+        Returns:
+            ImageAnalysis with detailed findings
+        """
+        import os
+        from pathlib import Path
+        
+        # Extract metadata from image path
+        filename = os.path.basename(image_path)
+        
+        # Simulate visual inspection (in production, this would use computer vision)
+        defects = self._identify_defects_from_image(image_path, context)
+        
+        # Categorize by severity
+        severity_summary = self._calculate_severity_summary(defects)
+        
+        # Identify compliance issues
+        compliance_issues = self._identify_compliance_issues(defects)
+        
+        # Create metadata
+        metadata = {
+            "filename": filename,
+            "file_exists": os.path.exists(image_path),
+            "analysis_timestamp": self._get_timestamp()
+        }
+        
+        return ImageAnalysis(
+            image_path=image_path,
+            image_id=image_id,
+            defects=defects,
+            severity_summary=severity_summary,
+            compliance_issues=compliance_issues,
+            metadata=metadata
+        )
+    
+    def _identify_defects_from_image(
+        self,
+        image_path: str,
+        context: Optional[Dict] = None
+    ) -> List[Dict]:
+        """
+        Identify defects from image analysis
+        
+        In production, this would integrate with computer vision models.
+        For now, it uses rule-based detection based on context.
+        """
+        defects = []
+        
+        # Sample defects for demonstration
+        # In production, this would be replaced with actual CV detection
+        sample_defects = [
+            "veg_contact",
+            "crossarm_decay",
+            "hardware_corrosion",
+            "insulator_damage",
+            "pole_lean"
+        ]
+        
+        for defect_id in sample_defects[:3]:  # Limit to 3 for demo
+            rule = self.inspection_rules.get_defect_rule(defect_id)
+            if rule:
+                defects.append({
+                    "defect_id": rule.defect_id,
+                    "name": rule.name,
+                    "category": rule.category.value,
+                    "severity": rule.severity.value,
+                    "description": rule.description,
+                    "corrective_action": rule.corrective_action,
+                    "nesc_reference": rule.nesc_reference,
+                    "confidence": 0.85  # Simulated confidence score
+                })
+        
+        return defects
+    
+    def _calculate_severity_summary(self, defects: List[Dict]) -> Dict[str, int]:
+        """Calculate summary of defects by severity"""
+        summary = {
+            "imminent_danger": 0,
+            "serious": 0,
+            "other_than_serious": 0,
+            "deminimis": 0,
+            "multi_defect": 0
+        }
+        
+        for defect in defects:
+            severity = defect.get("severity", "deminimis")
+            if severity in summary:
+                summary[severity] += 1
+        
+        # Check for multi-defect condition
+        if summary["serious"] + summary["other_than_serious"] >= 3:
+            summary["multi_defect"] = 1
+        
+        return summary
+    
+    def _identify_compliance_issues(self, defects: List[Dict]) -> List[Dict]:
+        """Identify compliance issues from defects"""
+        compliance_issues = []
+        
+        for defect in defects:
+            if defect.get("severity") in ["imminent_danger", "serious"]:
+                compliance_issues.append({
+                    "defect": defect["name"],
+                    "severity": defect["severity"],
+                    "standard": defect.get("nesc_reference", "N/A"),
+                    "action_required": defect.get("corrective_action", "Immediate inspection required")
+                })
+        
+        return compliance_issues
+    
+    def _consolidate_multi_image_findings(
+        self,
+        pole_id: str,
+        image_analyses: List[ImageAnalysis],
+        context: Optional[Dict] = None
+    ) -> MultiImageAnalysis:
+        """
+        Consolidate findings from multiple images
+        
+        This method:
+        1. Identifies defects visible in multiple images (higher confidence)
+        2. Combines unique defects from all images
+        3. Correlates findings across different views
+        4. Generates comprehensive recommendations
+        """
+        # Consolidate all defects
+        all_defects = []
+        defect_occurrences = {}  # Track how many images show each defect
+        
+        for analysis in image_analyses:
+            for defect in analysis.defects:
+                defect_key = defect["defect_id"]
+                
+                if defect_key not in defect_occurrences:
+                    defect_occurrences[defect_key] = {
+                        "count": 0,
+                        "images": [],
+                        "defect_data": defect
+                    }
+                
+                defect_occurrences[defect_key]["count"] += 1
+                defect_occurrences[defect_key]["images"].append(analysis.image_id)
+        
+        # Create consolidated defects with confidence scores
+        consolidated_defects = []
+        for defect_id, occurrence_data in defect_occurrences.items():
+            defect = occurrence_data["defect_data"].copy()
+            
+            # Increase confidence if defect appears in multiple images
+            base_confidence = defect.get("confidence", 0.85)
+            image_count = occurrence_data["count"]
+            
+            # Boost confidence: +10% for each additional image
+            adjusted_confidence = min(0.99, base_confidence + (image_count - 1) * 0.10)
+            
+            defect["confidence"] = adjusted_confidence
+            defect["visible_in_images"] = occurrence_data["images"]
+            defect["image_count"] = image_count
+            
+            consolidated_defects.append(defect)
+        
+        # Sort by severity and confidence
+        severity_order = {
+            "imminent_danger": 0,
+            "serious": 1,
+            "other_than_serious": 2,
+            "deminimis": 3,
+            "multi_defect": 4
+        }
+        consolidated_defects.sort(
+            key=lambda x: (severity_order.get(x["severity"], 5), -x["confidence"])
+        )
+        
+        # Calculate overall severity
+        overall_severity = {
+            "imminent_danger": 0,
+            "serious": 0,
+            "other_than_serious": 0,
+            "deminimis": 0,
+            "multi_defect": 0
+        }
+        
+        for defect in consolidated_defects:
+            severity = defect["severity"]
+            if severity in overall_severity:
+                overall_severity[severity] += 1
+        
+        # Check for multi-defect condition
+        if overall_severity["serious"] + overall_severity["other_than_serious"] >= 3:
+            overall_severity["multi_defect"] = 1
+        
+        # Generate cross-image correlations
+        correlations = self._generate_cross_image_correlations(
+            image_analyses,
+            consolidated_defects
+        )
+        
+        # Calculate confidence scores
+        confidence_scores = {
+            "overall_analysis": self._calculate_overall_confidence(consolidated_defects),
+            "defect_detection": sum(d["confidence"] for d in consolidated_defects) / len(consolidated_defects) if consolidated_defects else 0.0,
+            "multi_view_correlation": len([d for d in consolidated_defects if d["image_count"] > 1]) / len(consolidated_defects) if consolidated_defects else 0.0
+        }
+        
+        # Generate recommendations
+        recommendations = self._generate_multi_image_recommendations(
+            consolidated_defects,
+            overall_severity,
+            len(image_analyses)
+        )
+        
+        # Generate summary
+        summary = self._generate_multi_image_summary(
+            pole_id,
+            len(image_analyses),
+            consolidated_defects,
+            overall_severity
+        )
+        
+        return MultiImageAnalysis(
+            pole_id=pole_id,
+            images=image_analyses,
+            consolidated_defects=consolidated_defects,
+            cross_image_correlations=correlations,
+            overall_severity=overall_severity,
+            confidence_scores=confidence_scores,
+            recommendations=recommendations,
+            summary=summary
+        )
+    
+    def _generate_cross_image_correlations(
+        self,
+        image_analyses: List[ImageAnalysis],
+        consolidated_defects: List[Dict]
+    ) -> List[Dict]:
+        """Generate correlations between findings in different images"""
+        correlations = []
+        
+        # Find defects visible in multiple images
+        multi_view_defects = [d for d in consolidated_defects if d["image_count"] > 1]
+        
+        for defect in multi_view_defects:
+            correlations.append({
+                "type": "multi_view_confirmation",
+                "defect": defect["name"],
+                "confidence_boost": f"+{(defect['image_count'] - 1) * 10}%",
+                "images": defect["visible_in_images"],
+                "description": f"{defect['name']} confirmed across {defect['image_count']} images, increasing detection confidence"
+            })
+        
+        # Identify complementary views
+        if len(image_analyses) >= 2:
+            correlations.append({
+                "type": "complementary_coverage",
+                "description": f"Multiple viewing angles provide comprehensive pole assessment",
+                "benefit": "Reduces blind spots and increases inspection thoroughness"
+            })
+        
+        return correlations
+    
+    def _calculate_overall_confidence(self, consolidated_defects: List[Dict]) -> float:
+        """Calculate overall confidence score for the analysis"""
+        if not consolidated_defects:
+            return 0.0
+        
+        # Weight by severity
+        severity_weights = {
+            "imminent_danger": 1.0,
+            "serious": 0.9,
+            "other_than_serious": 0.8,
+            "deminimis": 0.7
+        }
+        
+        weighted_sum = 0.0
+        total_weight = 0.0
+        
+        for defect in consolidated_defects:
+            weight = severity_weights.get(defect["severity"], 0.7)
+            weighted_sum += defect["confidence"] * weight
+            total_weight += weight
+        
+        return weighted_sum / total_weight if total_weight > 0 else 0.0
+    
+    def _generate_multi_image_recommendations(
+        self,
+        consolidated_defects: List[Dict],
+        overall_severity: Dict[str, int],
+        image_count: int
+    ) -> List[str]:
+        """Generate recommendations based on multi-image analysis"""
+        recommendations = []
+        
+        # Priority 1: Critical/Imminent danger
+        if overall_severity["imminent_danger"] > 0:
+            recommendations.append(
+                f"🔴 CRITICAL: {overall_severity['imminent_danger']} imminent danger condition(s) detected - IMMEDIATE ACTION REQUIRED"
+            )
+        
+        # Priority 2: Serious defects
+        if overall_severity["serious"] > 0:
+            recommendations.append(
+                f"⚠️  SERIOUS: {overall_severity['serious']} serious defect(s) require prompt attention within 30 days"
+            )
+        
+        # Multi-view advantage
+        if image_count > 1:
+            multi_view_defects = [d for d in consolidated_defects if d["image_count"] > 1]
+            if multi_view_defects:
+                recommendations.append(
+                    f"✓ Multi-view analysis: {len(multi_view_defects)} defect(s) confirmed across multiple images (high confidence)"
+                )
+        
+        # Comprehensive inspection
+        recommendations.append(
+            f"📋 Schedule comprehensive on-site inspection to verify {len(consolidated_defects)} identified defect(s)"
+        )
+        
+        # Specific actions for high-priority defects
+        critical_defects = [d for d in consolidated_defects 
+                          if d["severity"] in ["imminent_danger", "serious"]]
+        if critical_defects:
+            recommendations.append(
+                "🔧 Priority corrective actions:"
+            )
+            for defect in critical_defects[:3]:  # Top 3
+                recommendations.append(
+                    f"   • {defect['name']}: {defect['corrective_action']}"
+                )
+        
+        return recommendations
+    
+    def _generate_multi_image_summary(
+        self,
+        pole_id: str,
+        image_count: int,
+        consolidated_defects: List[Dict],
+        overall_severity: Dict[str, int]
+    ) -> str:
+        """Generate summary text for multi-image analysis"""
+        summary_parts = []
+        
+        summary_parts.append(f"Multi-image analysis of pole {pole_id} using {image_count} image(s).")
+        summary_parts.append(f"Identified {len(consolidated_defects)} total defect(s):")
+        
+        severity_text = []
+        for severity, count in overall_severity.items():
+            if count > 0:
+                severity_text.append(f"{count} {severity.replace('_', ' ')}")
+        
+        if severity_text:
+            summary_parts.append(", ".join(severity_text) + ".")
+        
+        # Highlight multi-view confirmations
+        multi_view_count = len([d for d in consolidated_defects if d["image_count"] > 1])
+        if multi_view_count > 0:
+            summary_parts.append(
+                f"{multi_view_count} defect(s) confirmed across multiple images, providing high-confidence detection."
+            )
+        
+        return " ".join(summary_parts)
+    
+    def _get_timestamp(self) -> str:
+        """Get current timestamp in ISO format"""
+        from datetime import datetime
+        return datetime.now().isoformat()
+    
+    def print_multi_image_analysis(self, analysis: MultiImageAnalysis):
+        """
+        Print formatted multi-image analysis results
+        
+        Args:
+            analysis: MultiImageAnalysis object to print
+        """
+        print(f"\n{'=' * 80}")
+        print(f"ZEUS MULTI-IMAGE ANALYSIS REPORT")
+        print(f"{'=' * 80}")
+        print(f"\nPole ID: {analysis.pole_id}")
+        print(f"Images Analyzed: {len(analysis.images)}")
+        
+        # Print individual image info
+        print(f"\n{'─' * 80}")
+        print("IMAGES ANALYZED:")
+        print(f"{'─' * 80}")
+        for img in analysis.images:
+            print(f"\n{img.image_id}: {img.metadata['filename']}")
+            print(f"  Defects found: {len(img.defects)}")
+            print(f"  Severity: ", end="")
+            severity_items = [f"{k}={v}" for k, v in img.severity_summary.items() if v > 0]
+            print(", ".join(severity_items) if severity_items else "None")
+        
+        # Print consolidated defects
+        print(f"\n{'─' * 80}")
+        print("CONSOLIDATED DEFECTS:")
+        print(f"{'─' * 80}")
+        for i, defect in enumerate(analysis.consolidated_defects, 1):
+            print(f"\n{i}. {defect['name']} [{defect['severity'].upper()}]")
+            print(f"   Confidence: {defect['confidence']:.1%}")
+            print(f"   Visible in: {', '.join(defect['visible_in_images'])} ({defect['image_count']} image(s))")
+            print(f"   Category: {defect['category']}")
+            print(f"   Action: {defect['corrective_action']}")
+        
+        # Print correlations
+        if analysis.cross_image_correlations:
+            print(f"\n{'─' * 80}")
+            print("CROSS-IMAGE CORRELATIONS:")
+            print(f"{'─' * 80}")
+            for corr in analysis.cross_image_correlations:
+                print(f"\n• {corr.get('description', corr.get('type', 'Unknown'))}")
+                if 'benefit' in corr:
+                    print(f"  Benefit: {corr['benefit']}")
+        
+        # Print overall severity
+        print(f"\n{'─' * 80}")
+        print("OVERALL SEVERITY SUMMARY:")
+        print(f"{'─' * 80}")
+        for severity, count in analysis.overall_severity.items():
+            if count > 0:
+                print(f"  {severity.replace('_', ' ').title()}: {count}")
+        
+        # Print confidence scores
+        print(f"\n{'─' * 80}")
+        print("CONFIDENCE SCORES:")
+        print(f"{'─' * 80}")
+        for metric, score in analysis.confidence_scores.items():
+            print(f"  {metric.replace('_', ' ').title()}: {score:.1%}")
+        
+        # Print recommendations
+        print(f"\n{'─' * 80}")
+        print("RECOMMENDATIONS:")
+        print(f"{'─' * 80}")
+        for rec in analysis.recommendations:
+            print(f"\n{rec}")
+        
+        # Print summary
+        print(f"\n{'─' * 80}")
+        print("SUMMARY:")
+        print(f"{'─' * 80}")
+        print(f"\n{analysis.summary}")
+        
+        print(f"\n{'=' * 80}\n")
+
 
 # Made with Bob

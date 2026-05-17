@@ -1,0 +1,139 @@
+{
+  "image_file": "20260516_171832.jpg",
+  "timestamp": "2026-05-16T17:59:09.967813",
+  "pole_configuration": {
+    "type": "Wooden distribution pole",
+    "crossarms": "4-5 horizontal crossarms",
+    "voltage_level": "Medium voltage distribution (estimated 12-25kV)",
+    "equipment": [
+      "Two distribution transformers",
+      "Multiple pin-type insulators",
+      "Power conductors at multiple levels",
+      "Mounting hardware and brackets"
+    ]
+  },
+  "identified_defects": [
+    {
+      "defect_id": "XFMR-01",
+      "name": "Transformer Oil Staining/Corrosion",
+      "category": "equipment",
+      "severity": "serious",
+      "description": "Left transformer shows extensive rust-colored staining on tank, indicating potential oil leakage or severe tank corrosion",
+      "location": "Left transformer tank",
+      "corrective_action": "Immediate inspection required. Check for oil leaks, assess tank integrity, and determine if transformer replacement is needed.",
+      "nesc_reference": "NESC 2023 Rule 214A (Equipment Maintenance)",
+      "osha_reference": "OSHA 1910.269(a)(2)(i) - Equipment condition"
+    },
+    {
+      "defect_id": "ARM-01",
+      "name": "Crossarm Weathering/Decay",
+      "category": "structural",
+      "severity": "other_than_serious",
+      "description": "Multiple crossarms show signs of weathering and potential wood decay",
+      "location": "Multiple crossarms",
+      "corrective_action": "Conduct detailed structural assessment of crossarms. Check for rot, splits, or compromised load capacity.",
+      "nesc_reference": "NESC 2023 Rule 261H (Wood Crossarms)",
+      "osha_reference": "OSHA 1910.269(a)(2)(i)"
+    },
+    {
+      "defect_id": "HW-01",
+      "name": "Hardware Corrosion",
+      "category": "hardware",
+      "severity": "other_than_serious",
+      "description": "Visible rust and corrosion on various metal mounting hardware and brackets",
+      "location": "Multiple hardware components",
+      "corrective_action": "Inspect all hardware for structural integrity. Replace severely corroded components.",
+      "nesc_reference": "NESC 2023 Rule 261 (Strength Requirements)",
+      "osha_reference": "OSHA 1910.269(a)(2)(i)"
+    },
+    {
+      "defect_id": "POLE-01",
+      "name": "Pole Weathering/Aging",
+      "category": "structural",
+      "severity": "deminimis",
+      "description": "Wooden pole shows natural aging and weathering consistent with outdoor exposure",
+      "location": "Pole surface",
+      "corrective_action": "Monitor condition during routine inspections. No immediate action required.",
+      "nesc_reference": "NESC 2023 Rule 261A (Wood Poles)",
+      "osha_reference": "N/A"
+    },
+    {
+      "defect_id": "INS-01",
+      "name": "Insulator Aging",
+      "category": "equipment",
+      "severity": "deminimis",
+      "description": "Some insulators show signs of aging but appear functional",
+      "location": "Various insulator positions",
+      "corrective_action": "Continue monitoring. Replace if cracks or electrical tracking observed.",
+      "nesc_reference": "NESC 2023 Rule 215 (Insulators)",
+      "osha_reference": "N/A"
+    }
+  ],
+  "severity_assessment": {
+    "counts": {
+      "imminent_danger": 0,
+      "serious": 1,
+      "other_than_serious": 2,
+      "deminimis": 2,
+      "multi_defect": 1
+    },
+    "details": {
+      "imminent_danger": [],
+      "serious": [
+        "Transformer Oil Staining/Corrosion"
+      ],
+      "other_than_serious": [
+        "Crossarm Weathering/Decay",
+        "Hardware Corrosion"
+      ],
+      "deminimis": [
+        "Pole Weathering/Aging",
+        "Insulator Aging"
+      ],
+      "multi_defect": [
+        "Multiple defects present requiring coordinated remediation"
+      ]
+    }
+  },
+  "recommendations": [
+    "PRIORITY 1 - IMMEDIATE ACTION REQUIRED:",
+    "  \u2022 Transformer Oil Staining/Corrosion: Immediate inspection required. Check for oil leaks, assess tank integrity, and determine if transformer replacement is needed.",
+    "\nPRIORITY 2 - NEAR-TERM ACTION:",
+    "  \u2022 Crossarm Weathering/Decay: Conduct detailed structural assessment of crossarms. Check for rot, splits, or compromised load capacity.",
+    "  \u2022 Hardware Corrosion: Inspect all hardware for structural integrity. Replace severely corroded components.",
+    "\nPRIORITY 3 - ROUTINE MONITORING:",
+    "  \u2022 Pole Weathering/Aging: Monitor condition during routine inspections. No immediate action required.",
+    "  \u2022 Insulator Aging: Continue monitoring. Replace if cracks or electrical tracking observed.",
+    "\nGENERAL RECOMMENDATIONS:",
+    "  \u2022 Schedule comprehensive pole inspection within 30 days",
+    "  \u2022 Conduct oil analysis on both transformers",
+    "  \u2022 Perform structural load test on crossarms",
+    "  \u2022 Update maintenance records and schedule follow-up"
+  ],
+  "zeus_insights": {
+    "inspection_focus_areas": [
+      "Transformer condition and oil integrity",
+      "Crossarm structural capacity",
+      "Hardware corrosion and connection integrity",
+      "Pole groundline condition",
+      "Insulator electrical integrity"
+    ],
+    "applicable_standards": {
+      "NESC_2023": [
+        "Rule 214A - Equipment Maintenance",
+        "Rule 215 - Insulators",
+        "Rule 261 - Strength Requirements",
+        "Rule 261A - Wood Poles",
+        "Rule 261H - Wood Crossarms"
+      ],
+      "OSHA_1910_269": [
+        "1910.269(a)(2)(i) - Equipment condition requirements",
+        "1910.269(p) - Mechanical equipment"
+      ],
+      "Michigan_PSC": [
+        "Utility pole inspection requirements",
+        "Equipment maintenance standards"
+      ]
+    }
+  }
+}
