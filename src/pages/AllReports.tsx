@@ -690,7 +690,7 @@ export function AllReports() {
           {(['critical', 'high', 'medium', 'low'] as Severity[]).map((sev) => (
             <button
               key={sev}
-              className={`ar-chip${filters.severities.includes(sev) ? ` active-${sev === 'medium' ? 'med' : sev}` : ''}`}
+              className={`ar-chip${filters.severities.includes(sev) ? ` active-${sev === 'critical' ? 'crit' : sev === 'medium' ? 'med' : sev}` : ''}`}
               onClick={() => toggleSeverity(sev)}
               aria-pressed={filters.severities.includes(sev)}
             >
