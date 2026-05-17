@@ -52,7 +52,7 @@ export function GridMap({ poles, selectedPoleId, onSelectPole }: GridMapProps) {
   return (
     <div className="card" style={{ padding: 14 }}>
       <div className="row" style={{ marginBottom: 10 }}>
-        <h4>Grid map · Sector 7</h4>
+        <h4>Grid map · Detroit District D-7</h4>
         <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--text-3)' }}>
           {(['critical', 'high', 'medium', 'low'] as Severity[]).map((s) => (
             <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
