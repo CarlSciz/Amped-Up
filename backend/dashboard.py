@@ -19,6 +19,8 @@ from .dashboard_data import (
 )
 from .dashboard_models import (
     AddNoteRequest,
+    AnalyzeRequest,
+    AnalyzeResponse,
     DashboardResponse,
     Note,
     Report,
@@ -27,9 +29,12 @@ from .dashboard_models import (
     SelectedReport,
     Severity,
     SubmitReportRequest,
+    SynthesizeRequest,
+    SynthesizeResponse,
     UpdateReportStatusRequest,
     User,
 )
+from .watsonx_analyzer import get_analyzer
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -175,6 +180,72 @@ async def update_report_status(report_id: str, body: UpdateReportStatusRequest) 
             await _manager.broadcast("kpi_update", get_summary().model_dump())
             return {"status": "ok"}
     return {"status": "not_found"}
+
+
+@router.post("/analyze", response_model=AnalyzeResponse)
+async def analyze_inspection(body: AnalyzeRequest) -> AnalyzeResponse:
+    """
+    Run watsonx.ai Granite analysis on a field inspection report.
+    Returns severity classification, detected violations, NESC rules,
+    and a recommended corrective action.
+    Falls back to rule-based classification if the API key is not set.
+    """
+    analyzer = get_analyzer()
+    result = analyzer.analyze(
+        description=body.description,
+        pole_type=body.pole_type,
+        photo_count=body.photo_count,
+        photos=body.photos,
+    )
+    # Normalise severity to the Severity enum (clamp unknown values to medium)
+    raw_sev = result.get("severity", "medium")
+    try:
+        sev = Severity(raw_sev)
+    except ValueError:
+        sev = Severity.MEDIUM
+
+    return AnalyzeResponse(
+        severity=sev,
+        violations=result.get("violations", []),
+        osha_class=result.get("osha_class", "other_than_serious"),
+        nesc_rules=result.get("nesc_rules", []),
+        recommendation=result.get("recommendation", "Review and schedule corrective action"),
+        ai_score=int(result.get("ai_score", 70)),
+        confidence=result.get("confidence", "medium"),
+        powered_by=result.get("powered_by", "watsonx.ai"),
+        visual_observations=result.get("visual_observations") or None,
+    )
+
+
+@router.post("/synthesize", response_model=SynthesizeResponse)
+async def synthesize_analyses(body: SynthesizeRequest) -> SynthesizeResponse:
+    """
+    Combine N per-photo analyses of the same pole into one unified assessment.
+    Uses ibm/granite-3-8b-instruct to produce a coherent narrative summary.
+    """
+    analyzer = get_analyzer()
+    result = analyzer.synthesize(
+        pole_id=body.pole_id,
+        pole_type=body.pole_type,
+        analyses=[a.model_dump() for a in body.analyses],
+    )
+    raw_sev = result.get("severity", "medium")
+    try:
+        sev = Severity(raw_sev)
+    except ValueError:
+        sev = Severity.MEDIUM
+
+    return SynthesizeResponse(
+        severity=sev,
+        violations=result.get("violations", []),
+        osha_class=result.get("osha_class", "other_than_serious"),
+        nesc_rules=result.get("nesc_rules", []),
+        recommendation=result.get("recommendation", "Review and schedule corrective action"),
+        summary=result.get("summary", ""),
+        ai_score=int(result.get("ai_score", 70)),
+        confidence=result.get("confidence", "medium"),
+        powered_by=result.get("powered_by", "watsonx.ai"),
+    )
 
 
 @router.websocket("/ws")

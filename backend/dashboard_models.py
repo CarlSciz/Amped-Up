@@ -150,10 +150,62 @@ class UpdateReportStatusRequest(BaseModel):
     status: ReportStatus
 
 
+class AnalyzeRequest(BaseModel):
+    pole_id: str
+    pole_type: str | None = None
+    description: str = ""
+    photo_count: int = 0
+    address: str | None = None
+    # Base64 JPEG data URLs (frontend compresses to ≤512 px before sending)
+    photos: list[str] | None = None
+
+
+class AnalyzeResponse(BaseModel):
+    severity: Severity
+    violations: list[str]
+    osha_class: str
+    nesc_rules: list[str]
+    recommendation: str
+    ai_score: int
+    confidence: str
+    powered_by: str
+    # Vision model only — what it physically observed in the photos
+    visual_observations: list[str] | None = None
+
+
 class GpsLocation(BaseModel):
     lat: float
     lon: float
     accuracy: float
+
+
+class PhotoAnalysisInput(BaseModel):
+    """One photo's analysis result, forwarded to the synthesis endpoint."""
+    photo_label: str
+    severity: Severity
+    violations: list[str]
+    osha_class: str
+    nesc_rules: list[str]
+    recommendation: str
+    ai_score: int
+
+
+class SynthesizeRequest(BaseModel):
+    pole_id: str
+    pole_type: str | None = None
+    analyses: list[PhotoAnalysisInput]
+
+
+class SynthesizeResponse(BaseModel):
+    severity: Severity
+    violations: list[str]
+    osha_class: str
+    nesc_rules: list[str]
+    recommendation: str
+    summary: str          # narrative paragraph for the technician
+    ai_score: int
+    confidence: str
+    powered_by: str
 
 
 class SubmitReportRequest(BaseModel):
