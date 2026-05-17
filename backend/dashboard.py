@@ -10,7 +10,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from sqlalchemy import func as sa_func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from . import orm_models as dbm
 from .database import SessionLocal, get_db
@@ -33,6 +33,8 @@ from .dashboard_data import (
 from .osm_pole_data import GEOJSON_PATH
 from .dashboard_models import (
     AddNoteRequest,
+    AllReportRow,
+    AllReportsResponse,
     AnalyzeRequest,
     AnalyzeResponse,
     AnalyzePhotosRequest,
@@ -181,6 +183,85 @@ def get_dashboard(
         current_user=get_current_user(db),
         note_count=note_count,
     )
+
+
+@router.get("/all-reports", response_model=AllReportsResponse)
+def get_all_reports(
+    search: str | None = None,
+    severity: list[Severity] | None = Query(default=None),
+    status: list[str] | None = Query(default=None),
+    min_risk: float | None = Query(default=None, ge=0, le=100),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=15, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> AllReportsResponse:
+    """Return all reports across every status with pagination."""
+    stmt = (
+        select(dbm.Report)
+        .options(joinedload(dbm.Report.submitted_by), joinedload(dbm.Report.pole))
+        .join(dbm.Pole)
+        .outerjoin(dbm.ViolationType)
+        .order_by(dbm.Report.submitted_at.desc(), dbm.Report.id)
+    )
+
+    # Filters
+    if severity:
+        stmt = stmt.where(dbm.Report.severity.in_([dbm.Severity(s.value) for s in severity]))
+    if status:
+        valid_statuses = [dbm.ReportStatus(s) for s in status if s in {"open", "snoozed", "approved", "dismissed"}]
+        if valid_statuses:
+            stmt = stmt.where(dbm.Report.status.in_(valid_statuses))
+    if min_risk is not None:
+        stmt = stmt.where(dbm.Pole.risk_score >= min_risk)
+    if search:
+        term = f"%{search}%"
+        stmt = stmt.where(
+            dbm.Report.id.ilike(term)
+            | dbm.Report.title.ilike(term)
+            | dbm.Report.location.ilike(term)
+            | dbm.Report.description.ilike(term)
+            | dbm.Pole.id.ilike(term)
+            | dbm.Pole.classification.ilike(term)
+            | dbm.Pole.address.ilike(term)
+            | dbm.Pole.circuit.ilike(term)
+        )
+
+    # Count before pagination
+    count_stmt = select(sa_func.count()).select_from(stmt.subquery())
+    total = db.scalar(count_stmt) or 0
+    pages = math.ceil(total / limit) if total > 0 else 1
+
+    offset = (page - 1) * limit
+    rows = db.scalars(stmt.offset(offset).limit(limit)).all()
+
+    report_rows: list[AllReportRow] = []
+    for row in rows:
+        pole = row.pole
+        report_rows.append(
+            AllReportRow(
+                id=row.id,
+                pole_id=row.pole_id,
+                title=row.title,
+                severity=Severity(row.severity.value),
+                status=ReportStatus(row.status.value),
+                submitted_at=row.submitted_at.isoformat(),
+                location=row.location,
+                description=row.description,
+                submitted_by=ReportAuthor(
+                    initials=row.submitted_by.initials,
+                    name=row.submitted_by.name,
+                ),
+                pole_lat=pole.latitude if pole else 0.0,
+                pole_lon=pole.longitude if pole else 0.0,
+                pole_address=pole.address if pole else "",
+                pole_classification=pole.classification if pole else "",
+                pole_circuit=pole.circuit if pole else "",
+                risk_score=pole.risk_score if pole else None,
+                predicted_severity=pole.predicted_severity if pole else None,
+            )
+        )
+
+    return AllReportsResponse(reports=report_rows, total=total, page=page, pages=pages)
 
 
 @router.get("/map-poles", response_model=MapPolesResponse)
