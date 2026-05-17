@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import math
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from . import orm_models as dbm
 from .database import SessionLocal
@@ -23,14 +24,18 @@ USERS = [
     {"id": "user-jl", "initials": "JL", "name": "J. Liu", "role": "Safety reviewer"},
 ]
 
-POLES = [
+# ---------------------------------------------------------------------------
+# DETAILED_POLE_TARGETS
+# Each entry locates the nearest real OSM pole in the DB, applies rich
+# metadata to it, and seeds the associated report, photos, and history events.
+# ---------------------------------------------------------------------------
+DETAILED_POLE_TARGETS = [
     {
-        "id": "P-1147",
+        # Corktown — Michigan Ave & Trumbull Ave
+        "target_lat": 42.3321,
+        "target_lon": -83.0478,
         "classification": "Class 3 Southern Pine",
         "severity": dbm.Severity.CRITICAL,
-        "address": "Michigan Ave & Trumbull Ave, Detroit, MI",
-        "latitude": 42.3321,
-        "longitude": -83.0478,
         "height_ft": 45,
         "above_grade_ft": 38,
         "owner": "DTE Energy - Joint use with Comcast",
@@ -40,15 +45,86 @@ POLES = [
         "ai_score": 94,
         "ai_confidence": "high confidence",
         "recommendation": "Replace within 7 days",
-        "sector": "7",
+        "report": {
+            "id": "RPT-D01",
+            "title": "Lean exceeds 12 degrees, crossarm rot",
+            "severity": dbm.Severity.CRITICAL,
+            "user_id": "tech-jc",
+            "submitted_at": "2026-05-14T11:48:00",
+            "location": "Michigan Ave & Trumbull Ave",
+        },
+        "photos": [
+            ("photo-1", "01 - Overview, west", dbm.Severity.CRITICAL, "12 degree lean"),
+            ("photo-2", "02 - Crossarm closeup", dbm.Severity.CRITICAL, "Rot"),
+            ("photo-3", "03 - Transformer base", dbm.Severity.MEDIUM, "Oil staining"),
+        ],
+        "history_extra": [
+            {
+                "id": "evt-d01-c1",
+                "type": dbm.HistoryEventType.COMMENT,
+                "title": "R. Patel - Comment on report UP-2026-04891",
+                "event_date": "2026-05-14T15:42:00",
+                "author_user_id": "user-rp",
+                "comment": "Crew 14 dispatched for tomorrow 7 AM. Bringing a 45 ft Class 3 replacement and the lift truck. Traffic permit cleared with the city.",
+                "pin_color": "#475569",
+            },
+            {
+                "id": "evt-d01-c2",
+                "type": dbm.HistoryEventType.COMMENT,
+                "title": "J. Liu - Comment on report UP-2026-04891",
+                "event_date": "2026-05-14T13:08:00",
+                "author_user_id": "user-jl",
+                "comment": "De-energize feeder F-407 before approach. Comcast fiber attached at 23 ft, coordinate with their NOC ticket 88421.",
+                "pin_color": "#475569",
+            },
+            {
+                "id": "evt-d01-i1",
+                "type": dbm.HistoryEventType.INSPECTION,
+                "title": "Routine inspection - drone",
+                "event_date": "2025-11-02",
+                "description": "Last manual check. Minor lean noted (4.8 degrees). Vegetation trimmed.",
+                "pin_color": "#FBBF24",
+            },
+            {
+                "id": "evt-d01-u1",
+                "type": dbm.HistoryEventType.UPGRADE,
+                "title": "Hardware upgrade",
+                "event_date": "2022-08-19",
+                "description": "Transformer swapped from 25 kVA to 50 kVA. Polymer insulators installed.",
+                "pin_color": "#60A5FA",
+            },
+            {
+                "id": "evt-d01-j1",
+                "type": dbm.HistoryEventType.JOINT_USE,
+                "title": "Joint use added",
+                "event_date": "2019-03-04",
+                "description": "Comcast fiber attachment permitted at 23 ft above grade.",
+                "pin_color": "#60A5FA",
+            },
+            {
+                "id": "evt-d01-t1",
+                "type": dbm.HistoryEventType.TREATMENT,
+                "title": "Treatment cycle",
+                "event_date": "2014-06-12",
+                "description": "CCA pressure-treatment refresh. Estimated remaining life 22 years.",
+                "pin_color": "#10B981",
+            },
+            {
+                "id": "evt-d01-in1",
+                "type": dbm.HistoryEventType.INSTALL,
+                "title": "Pole installed",
+                "event_date": "2008-04-27",
+                "description": "Class 3 Southern Pine, 45 ft. Original contractor Quanta Services.",
+                "pin_color": "#6B7280",
+            },
+        ],
     },
     {
-        "id": "P-1192",
+        # Corktown — W. Vernor Hwy & Rosa Parks Blvd
+        "target_lat": 42.3298,
+        "target_lon": -83.0456,
         "classification": "Class 2 Southern Pine",
         "severity": dbm.Severity.CRITICAL,
-        "address": "W. Vernor Hwy & Rosa Parks Blvd, Detroit, MI",
-        "latitude": 42.3298,
-        "longitude": -83.0456,
         "height_ft": 40,
         "above_grade_ft": 34,
         "owner": "DTE Energy",
@@ -56,15 +132,34 @@ POLES = [
         "ai_score": 88,
         "ai_confidence": "high confidence",
         "recommendation": "Dispatch hazmat and replace transformer",
-        "sector": "7",
+        "report": {
+            "id": "RPT-D02",
+            "title": "Transformer leak, oil stains",
+            "severity": dbm.Severity.CRITICAL,
+            "user_id": "tech-dk",
+            "submitted_at": "2026-05-14T08:30:00",
+            "location": "W. Vernor Hwy & Rosa Parks Blvd",
+        },
+        "photos": [
+            ("photo-4", "01 - Overview, north", dbm.Severity.CRITICAL, "Oil leak"),
+            ("photo-5", "02 - Transformer base", dbm.Severity.CRITICAL, "Staining"),
+        ],
+        "history_extra": [
+            {
+                "id": "evt-d02-in1",
+                "type": dbm.HistoryEventType.INSTALL,
+                "title": "Pole installed",
+                "event_date": None,
+                "pin_color": "#6B7280",
+            },
+        ],
     },
     {
-        "id": "P-1062",
+        # Corktown — W. Willis St & 13th St
+        "target_lat": 42.3339,
+        "target_lon": -83.0462,
         "classification": "Class 3 Southern Pine",
         "severity": dbm.Severity.HIGH,
-        "address": "W. Willis St & 13th St, Detroit, MI",
-        "latitude": 42.3339,
-        "longitude": -83.0462,
         "height_ft": 45,
         "above_grade_ft": 37,
         "owner": "DTE Energy",
@@ -72,15 +167,23 @@ POLES = [
         "ai_score": 76,
         "ai_confidence": "medium confidence",
         "recommendation": "Inspect and treat within 30 days",
-        "sector": "7",
+        "report": {
+            "id": "RPT-D03",
+            "title": "Woodpecker damage, upper third",
+            "severity": dbm.Severity.HIGH,
+            "user_id": "tech-as",
+            "submitted_at": "2026-05-13T09:15:00",
+            "location": "W. Willis St & 13th St",
+        },
+        "photos": [],
+        "history_extra": [],
     },
     {
-        "id": "P-1078",
+        # Corktown — Michigan Ave & 15th St
+        "target_lat": 42.3315,
+        "target_lon": -83.0510,
         "classification": "Class 4 Southern Pine",
         "severity": dbm.Severity.HIGH,
-        "address": "Michigan Ave & 15th St, Detroit, MI",
-        "latitude": 42.3315,
-        "longitude": -83.0510,
         "height_ft": 35,
         "above_grade_ft": 28,
         "owner": "DTE Energy",
@@ -88,15 +191,23 @@ POLES = [
         "ai_score": 71,
         "ai_confidence": "medium confidence",
         "recommendation": "Replace insulator within 30 days",
-        "sector": "7",
+        "report": {
+            "id": "RPT-D04",
+            "title": "Insulator cracked, phase B",
+            "severity": dbm.Severity.HIGH,
+            "user_id": "tech-mr",
+            "submitted_at": "2026-05-13T14:22:00",
+            "location": "Michigan Ave & 15th St",
+        },
+        "photos": [],
+        "history_extra": [],
     },
     {
-        "id": "P-1023",
+        # Corktown — Temple St & Trumbull Ave
+        "target_lat": 42.3352,
+        "target_lon": -83.0481,
         "classification": "Class 3 Southern Pine",
         "severity": dbm.Severity.MEDIUM,
-        "address": "Temple St & Trumbull Ave, Detroit, MI",
-        "latitude": 42.3352,
-        "longitude": -83.0481,
         "height_ft": 45,
         "above_grade_ft": 38,
         "owner": "DTE Energy",
@@ -104,15 +215,23 @@ POLES = [
         "ai_score": 54,
         "ai_confidence": "medium confidence",
         "recommendation": "Schedule vegetation trim within 90 days",
-        "sector": "7",
+        "report": {
+            "id": "RPT-D05",
+            "title": "Vegetation contact, secondary",
+            "severity": dbm.Severity.MEDIUM,
+            "user_id": "tech-tb",
+            "submitted_at": "2026-05-12T16:05:00",
+            "location": "Temple St & Trumbull Ave",
+        },
+        "photos": [],
+        "history_extra": [],
     },
     {
-        "id": "P-1131",
+        # Corktown — W. Grand Blvd & 14th St
+        "target_lat": 42.3374,
+        "target_lon": -83.0498,
         "classification": "Class 3 Steel",
         "severity": dbm.Severity.MEDIUM,
-        "address": "W. Grand Blvd & 14th St, Detroit, MI",
-        "latitude": 42.3374,
-        "longitude": -83.0498,
         "height_ft": 50,
         "above_grade_ft": 43,
         "owner": "DTE Energy",
@@ -120,8 +239,64 @@ POLES = [
         "ai_score": 58,
         "ai_confidence": "medium confidence",
         "recommendation": "Re-tension guy wire within 90 days",
-        "sector": "7",
+        "report": {
+            "id": "RPT-D06",
+            "title": "Guy wire tension below spec",
+            "severity": dbm.Severity.MEDIUM,
+            "user_id": "tech-lw",
+            "submitted_at": "2026-05-11T10:44:00",
+            "location": "W. Grand Blvd & 14th St",
+        },
+        "photos": [],
+        "history_extra": [],
     },
+    {
+        # Downtown — Woodward Ave & Campus Martius
+        "target_lat": 42.3314,
+        "target_lon": -83.0458,
+        "severity": dbm.Severity.LOW,
+        "report": {
+            "id": "RPT-D07",
+            "title": "Low priority surface weathering",
+            "severity": dbm.Severity.LOW,
+            "user_id": "tech-ng",
+            "submitted_at": "2026-05-10T13:20:00",
+            "location": "Woodward Ave & Campus Martius",
+        },
+        "photos": [],
+        "history_extra": [],
+    },
+    {
+        # Eastern Market — Russell St & Adelaide St
+        "target_lat": 42.3482,
+        "target_lon": -83.0418,
+        "severity": dbm.Severity.LOW,
+        "report": {
+            "id": "RPT-D08",
+            "title": "Faded pole tag, routine re-stencil",
+            "severity": dbm.Severity.LOW,
+            "user_id": "tech-ho",
+            "submitted_at": "2026-05-10T09:05:00",
+            "location": "Russell St & Adelaide St",
+        },
+        "photos": [],
+        "history_extra": [],
+    },
+]
+
+# ---------------------------------------------------------------------------
+# MAP_ONLY_TARGETS
+# Find the nearest OSM pole to each location and apply minimal metadata so
+# these poles appear across the map without seeding full report data.
+# ---------------------------------------------------------------------------
+MAP_ONLY_TARGETS = [
+    {"target_lat": 42.3379, "target_lon": -83.0188, "severity": dbm.Severity.MEDIUM, "neighborhood": "Rivertown"},
+    {"target_lat": 42.3671, "target_lon": -83.0752, "severity": dbm.Severity.LOW, "neighborhood": "New Center"},
+    {"target_lat": 42.3795, "target_lon": -83.0966, "severity": dbm.Severity.LOW, "neighborhood": "Boston-Edison"},
+    {"target_lat": 42.3003, "target_lon": -83.1032, "severity": dbm.Severity.LOW, "neighborhood": "Southwest Detroit"},
+    {"target_lat": 42.4027, "target_lon": -82.9348, "severity": dbm.Severity.LOW, "neighborhood": "East English Village"},
+    {"target_lat": 42.3517, "target_lon": -83.0601, "severity": dbm.Severity.LOW, "neighborhood": "Midtown"},
+    {"target_lat": 42.3209, "target_lon": -83.0792, "severity": dbm.Severity.LOW, "neighborhood": "Mexicantown"},
 ]
 
 DETROIT_PLACES = [
@@ -141,29 +316,6 @@ DETROIT_PLACES = [
     ("Jefferson Chalmers", "Jefferson Ave & Chalmers St", 42.3708, -82.9402, "DTE Jefferson 920 - 13.2 kV"),
 ]
 
-MAP_ONLY_POLES = [
-    ("P-1001", dbm.Severity.LOW, 42.3314, -83.0458, "Woodward Ave & Campus Martius, Downtown Detroit, MI", "DTE Downtown Network - 13.2 kV", "Downtown"),
-    ("P-1002", dbm.Severity.LOW, 42.3482, -83.0418, "Russell St & Adelaide St, Eastern Market, Detroit, MI", "DTE Eastern Market 214 - 13.2 kV", "Eastern Market"),
-    ("P-1003", dbm.Severity.LOW, 42.3517, -83.0601, "Woodward Ave & W. Willis St, Midtown Detroit, MI", "DTE Midtown 501 - 13.2 kV", "Midtown"),
-    ("P-1004", dbm.Severity.LOW, 42.3209, -83.0792, "W. Vernor Hwy & Bagley St, Mexicantown, Detroit, MI", "DTE Vernor 312 - 13.2 kV", "Mexicantown"),
-    ("P-1005", dbm.Severity.MEDIUM, 42.3379, -83.0188, "Jefferson Ave & Chene St, Rivertown, Detroit, MI", "DTE Rivertown 118 - 13.2 kV", "Rivertown"),
-    ("P-1006", dbm.Severity.LOW, 42.3671, -83.0752, "W. Grand Blvd & Woodward Ave, New Center, Detroit, MI", "DTE New Center 622 - 13.2 kV", "New Center"),
-    ("P-1007", dbm.Severity.LOW, 42.3795, -83.0966, "Chicago Blvd & 2nd Ave, Boston-Edison, Detroit, MI", "DTE Boston Edison 455 - 13.2 kV", "Boston-Edison"),
-    ("P-1008", dbm.Severity.LOW, 42.3003, -83.1032, "Fort St & Livernois Ave, Southwest Detroit, MI", "DTE Southwest 730 - 13.2 kV", "Southwest Detroit"),
-    ("P-1009", dbm.Severity.LOW, 42.4027, -82.9348, "E. Warren Ave & Cadieux Rd, East English Village, Detroit, MI", "DTE East English 884 - 13.2 kV", "East English Village"),
-]
-
-REPORTS = [
-    ("RPT-1147", "P-1147", "Lean exceeds 12 degrees, crossarm rot", dbm.Severity.CRITICAL, "tech-jc", "2026-05-14T11:48:00", "Michigan Ave & Trumbull Ave"),
-    ("RPT-1192", "P-1192", "Transformer leak, oil stains", dbm.Severity.CRITICAL, "tech-dk", "2026-05-14T08:30:00", "W. Vernor Hwy & Rosa Parks Blvd"),
-    ("RPT-1062", "P-1062", "Woodpecker damage, upper third", dbm.Severity.HIGH, "tech-as", "2026-05-13T09:15:00", "W. Willis St & 13th St"),
-    ("RPT-1078", "P-1078", "Insulator cracked, phase B", dbm.Severity.HIGH, "tech-mr", "2026-05-13T14:22:00", "Michigan Ave & 15th St"),
-    ("RPT-1023", "P-1023", "Vegetation contact, secondary", dbm.Severity.MEDIUM, "tech-tb", "2026-05-12T16:05:00", "Temple St & Trumbull Ave"),
-    ("RPT-1131", "P-1131", "Guy wire tension below spec", dbm.Severity.MEDIUM, "tech-lw", "2026-05-11T10:44:00", "W. Grand Blvd & 14th St"),
-    ("RPT-1001", "P-1001", "Low priority surface weathering", dbm.Severity.LOW, "tech-ng", "2026-05-10T13:20:00", "Woodward Ave & Campus Martius"),
-    ("RPT-1002", "P-1002", "Faded pole tag, routine re-stencil", dbm.Severity.LOW, "tech-ho", "2026-05-10T09:05:00", "Russell St & Adelaide St"),
-]
-
 OSM_REPORT_TEMPLATES = [
     ("RPT-OSM-001", "Crossarm hardware flagged from street-level sweep", dbm.Severity.CRITICAL, "tech-jc", "2026-05-16T15:40:00"),
     ("RPT-OSM-002", "Vegetation encroachment near primary conductor", dbm.Severity.HIGH, "tech-as", "2026-05-16T14:25:00"),
@@ -175,115 +327,12 @@ OSM_REPORT_TEMPLATES = [
     ("RPT-OSM-008", "Routine OSM inventory validation", dbm.Severity.MEDIUM, "tech-ho", "2026-05-16T08:55:00"),
 ]
 
-PHOTOS = [
-    ("photo-1", "P-1147", "RPT-1147", "01 - Overview, west", dbm.Severity.CRITICAL, "12 degree lean"),
-    ("photo-2", "P-1147", "RPT-1147", "02 - Crossarm closeup", dbm.Severity.CRITICAL, "Rot"),
-    ("photo-3", "P-1147", "RPT-1147", "03 - Transformer base", dbm.Severity.MEDIUM, "Oil staining"),
-    ("photo-4", "P-1192", "RPT-1192", "01 - Overview, north", dbm.Severity.CRITICAL, "Oil leak"),
-    ("photo-5", "P-1192", "RPT-1192", "02 - Transformer base", dbm.Severity.CRITICAL, "Staining"),
-]
-
-HISTORY_EVENTS = [
-    {
-        "id": "evt-1",
-        "pole_id": "P-1147",
-        "report_id": "RPT-1147",
-        "type": dbm.HistoryEventType.REPORT,
-        "title": "Report RPT-1147 submitted by J. Chen",
-        "event_date": "2026-05-14T11:48:00",
-        "author_user_id": "tech-jc",
-        "description": "3 photos uploaded. 12 degree lean and crossarm rot called out. AI scored 94, classified Critical. Pending crew assignment.",
-        "severity": dbm.Severity.CRITICAL,
-        "pin_color": "#EF4444",
-    },
-    {
-        "id": "evt-2",
-        "pole_id": "P-1147",
-        "report_id": "RPT-1147",
-        "type": dbm.HistoryEventType.COMMENT,
-        "title": "R. Patel - Comment on report UP-2026-04891",
-        "event_date": "2026-05-14T15:42:00",
-        "author_user_id": "user-rp",
-        "comment": "Crew 14 dispatched for tomorrow 7 AM. Bringing a 45 ft Class 3 replacement and the lift truck. Traffic permit cleared with the city.",
-        "pin_color": "#475569",
-    },
-    {
-        "id": "evt-3",
-        "pole_id": "P-1147",
-        "report_id": "RPT-1147",
-        "type": dbm.HistoryEventType.COMMENT,
-        "title": "J. Liu - Comment on report UP-2026-04891",
-        "event_date": "2026-05-14T13:08:00",
-        "author_user_id": "user-jl",
-        "comment": "De-energize feeder F-407 before approach. Comcast fiber attached at 23 ft, coordinate with their NOC ticket 88421.",
-        "pin_color": "#475569",
-    },
-    {
-        "id": "evt-4",
-        "pole_id": "P-1147",
-        "type": dbm.HistoryEventType.INSPECTION,
-        "title": "Routine inspection - drone",
-        "event_date": "2025-11-02",
-        "description": "Last manual check. Minor lean noted (4.8 degrees). Vegetation trimmed.",
-        "pin_color": "#FBBF24",
-    },
-    {
-        "id": "evt-5",
-        "pole_id": "P-1147",
-        "type": dbm.HistoryEventType.UPGRADE,
-        "title": "Hardware upgrade",
-        "event_date": "2022-08-19",
-        "description": "Transformer swapped from 25 kVA to 50 kVA. Polymer insulators installed.",
-        "pin_color": "#60A5FA",
-    },
-    {
-        "id": "evt-6",
-        "pole_id": "P-1147",
-        "type": dbm.HistoryEventType.JOINT_USE,
-        "title": "Joint use added",
-        "event_date": "2019-03-04",
-        "description": "Comcast fiber attachment permitted at 23 ft above grade.",
-        "pin_color": "#60A5FA",
-    },
-    {
-        "id": "evt-7",
-        "pole_id": "P-1147",
-        "type": dbm.HistoryEventType.TREATMENT,
-        "title": "Treatment cycle",
-        "event_date": "2014-06-12",
-        "description": "CCA pressure-treatment refresh. Estimated remaining life 22 years.",
-        "pin_color": "#10B981",
-    },
-    {
-        "id": "evt-8",
-        "pole_id": "P-1147",
-        "type": dbm.HistoryEventType.INSTALL,
-        "title": "Pole installed",
-        "event_date": "2008-04-27",
-        "description": "Class 3 Southern Pine, 45 ft. Original contractor Quanta Services.",
-        "pin_color": "#6B7280",
-    },
-    {
-        "id": "evt-9",
-        "pole_id": "P-1192",
-        "report_id": "RPT-1192",
-        "type": dbm.HistoryEventType.REPORT,
-        "title": "Report RPT-1192 submitted by D. Kim",
-        "event_date": "2026-05-14T08:30:00",
-        "author_user_id": "tech-dk",
-        "description": "Transformer oil leak observed. Significant staining on pole base and surrounding ground.",
-        "severity": dbm.Severity.CRITICAL,
-        "pin_color": "#EF4444",
-    },
-    {
-        "id": "evt-10",
-        "pole_id": "P-1192",
-        "type": dbm.HistoryEventType.INSTALL,
-        "title": "Pole installed",
-        "event_date": None,
-        "pin_color": "#6B7280",
-    },
-]
+_SEV_PIN_COLOR: dict[dbm.Severity, str] = {
+    dbm.Severity.CRITICAL: "#EF4444",
+    dbm.Severity.HIGH: "#F97316",
+    dbm.Severity.MEDIUM: "#FBBF24",
+    dbm.Severity.LOW: "#10B981",
+}
 
 
 def _parse_dt(value: str | None) -> datetime | None:
@@ -295,7 +344,6 @@ def _upsert(db, model, key: str, values: dict) -> None:
     if row is None:
         db.add(model(**values))
         return
-
     for field, value in values.items():
         setattr(row, field, value)
 
@@ -313,12 +361,36 @@ def _location_label(pole: dict) -> str:
     return f"{intersection}, {neighborhood}, Detroit"
 
 
+def _nearest_osm_pole(db, lat: float, lon: float, exclude_ids: set[str]) -> dbm.Pole | None:
+    """Return the closest OSM pole from the DB that is not already claimed."""
+    cos_lat = math.cos(math.radians(lat))
+    stmt = select(dbm.Pole).where(dbm.Pole.id.like("OSM-%"))
+    if exclude_ids:
+        stmt = stmt.where(dbm.Pole.id.notin_(exclude_ids))
+    stmt = stmt.order_by(
+        (dbm.Pole.latitude - lat) * (dbm.Pole.latitude - lat)
+        + (dbm.Pole.longitude - lon) * (dbm.Pole.longitude - lon) * cos_lat * cos_lat
+    ).limit(1)
+    return db.scalars(stmt).first()
+
+
+def _apply_pole_metadata(pole: dbm.Pole, target: dict) -> None:
+    """Write rich metadata fields from a target dict onto an ORM Pole row."""
+    for field in (
+        "classification", "height_ft", "above_grade_ft", "owner", "circuit",
+        "lean_degrees", "lean_status", "ai_score", "ai_confidence", "recommendation",
+    ):
+        if field in target:
+            setattr(pole, field, target[field])
+    pole.severity = target["severity"]
+
+
 def _osm_report_rows() -> list[tuple[str, str, str, dbm.Severity, str, str, str]]:
     poles = list(iter_osm_poles(detroit_only=True))
     if not poles:
         return []
 
-    # Pick well-spaced nodes from the rendered Detroit inventory so reports visibly land across the map.
+    # Pick well-spaced nodes so reports visibly land across the map.
     step = max(1, len(poles) // len(OSM_REPORT_TEMPLATES))
     selected = [poles[index * step] for index in range(len(OSM_REPORT_TEMPLATES))]
 
@@ -373,15 +445,16 @@ def _osm_history_events(report_rows: list[tuple[str, str, str, dbm.Severity, str
             "author_user_id": user_id,
             "description": title,
             "severity": severity,
-            "pin_color": {
-                dbm.Severity.CRITICAL: "#EF4444",
-                dbm.Severity.HIGH: "#F97316",
-                dbm.Severity.MEDIUM: "#FBBF24",
-                dbm.Severity.LOW: "#10B981",
-            }[severity],
+            "pin_color": _SEV_PIN_COLOR[severity],
         }
         for report_id, pole_id, title, severity, user_id, submitted_at, _location in report_rows
     ]
+
+
+def _purge_synthetic_poles(db) -> int:
+    """Delete any leftover P-XXXX synthetic poles (and their cascading data) from prior seed runs."""
+    result = db.execute(delete(dbm.Pole).where(dbm.Pole.id.like("P-%")))
+    return result.rowcount
 
 
 def _seed_osm_poles(db, batch_size: int = 2500) -> tuple[int, int]:
@@ -428,39 +501,144 @@ def seed_dashboard_data() -> None:
         raise RuntimeError("DATABASE_URL is not set")
 
     with SessionLocal() as db:
+        # ── 1. Users ──────────────────────────────────────────────────────────
         for values in USERS:
             _upsert(db, dbm.User, values["id"], values)
 
-        for values in POLES:
-            _upsert(db, dbm.Pole, values["id"], values)
+        # ── 2. Remove any stale P-XXXX synthetic poles from prior seed runs ──
+        purged = _purge_synthetic_poles(db)
+        if purged:
+            print(f"Purged {purged} synthetic P-XXXX pole(s) and their cascaded data.")
 
-        for pole_id, severity, lat, lon, address, circuit, sector in MAP_ONLY_POLES:
-            _upsert(
-                db,
-                dbm.Pole,
-                pole_id,
-                {
-                    "id": pole_id,
-                    "classification": "Unknown",
-                    "severity": severity,
-                    "address": address,
-                    "latitude": lat,
-                    "longitude": lon,
-                    "owner": "DTE Energy",
-                    "circuit": circuit,
-                    "sector": sector,
-                    "recommendation": "No action currently recommended",
-                },
-            )
-
+        # ── 3. OSM pole bulk-load from CSV ────────────────────────────────────
         osm_poles_inserted, osm_poles_updated = _seed_osm_poles(db)
+        db.flush()
+
+        # ── 4. Resolve nearest OSM pole for each detailed target ──────────────
+        used_ids: set[str] = set()
+        resolved_targets: list[tuple[dbm.Pole, dict]] = []
+
+        for target in DETAILED_POLE_TARGETS:
+            pole = _nearest_osm_pole(db, target["target_lat"], target["target_lon"], used_ids)
+            if pole is None:
+                print(
+                    f"Warning: no OSM pole found near "
+                    f"({target['target_lat']}, {target['target_lon']}) — skipping"
+                )
+                continue
+            used_ids.add(pole.id)
+            _apply_pole_metadata(pole, target)
+            resolved_targets.append((pole, target))
+
+        # ── 5. Resolve nearest OSM pole for each map-only target ──────────────
+        for target in MAP_ONLY_TARGETS:
+            pole = _nearest_osm_pole(db, target["target_lat"], target["target_lon"], used_ids)
+            if pole is None:
+                continue
+            used_ids.add(pole.id)
+            pole.severity = target["severity"]
+            pole.recommendation = "No action currently recommended"
 
         db.flush()
 
-        osm_report_rows = _osm_report_rows()
-        report_rows = [*REPORTS, *osm_report_rows]
+        # ── 6. Reports, photos, and history events for detailed targets ────────
+        all_reports = 0
+        all_photos = 0
+        all_events = 0
 
-        for report_id, pole_id, title, severity, user_id, submitted_at, location in report_rows:
+        for pole, target in resolved_targets:
+            rpt = target["report"]
+            report_id: str = rpt["id"]
+            rpt_severity: dbm.Severity = rpt["severity"]
+            neighborhood, intersection, _circuit = _nearest_detroit_place(pole.latitude, pole.longitude)
+            location = rpt.get("location") or f"{intersection}, {neighborhood}, Detroit"
+
+            _upsert(
+                db,
+                dbm.Report,
+                report_id,
+                {
+                    "id": report_id,
+                    "pole_id": pole.id,
+                    "title": rpt["title"],
+                    "severity": rpt_severity,
+                    "status": dbm.ReportStatus.OPEN,
+                    "submitted_by_user_id": rpt["user_id"],
+                    "submitted_at": _parse_dt(rpt["submitted_at"]),
+                    "location": location,
+                },
+            )
+            all_reports += 1
+
+            # Auto-generate the REPORT-type history event for this submission
+            _upsert(
+                db,
+                dbm.PoleHistoryEvent,
+                f"evt-{report_id.lower()}",
+                {
+                    "id": f"evt-{report_id.lower()}",
+                    "pole_id": pole.id,
+                    "report_id": report_id,
+                    "type": dbm.HistoryEventType.REPORT,
+                    "title": f"Report {report_id} submitted",
+                    "event_date": _parse_dt(rpt["submitted_at"]),
+                    "author_user_id": rpt["user_id"],
+                    "description": rpt["title"],
+                    "severity": rpt_severity,
+                    "pin_color": _SEV_PIN_COLOR[rpt_severity],
+                },
+            )
+            all_events += 1
+
+            # Photos
+            for photo_id, label, severity, severity_label in target.get("photos", []):
+                _upsert(
+                    db,
+                    dbm.FieldPhoto,
+                    photo_id,
+                    {
+                        "id": photo_id,
+                        "pole_id": pole.id,
+                        "report_id": report_id,
+                        "label": label,
+                        "severity": severity,
+                        "severity_label": severity_label,
+                    },
+                )
+                all_photos += 1
+
+            # Extra history events (comments, inspections, upgrades, …)
+            for event in target.get("history_extra", []):
+                evt_type: dbm.HistoryEventType = event["type"]
+                # COMMENT events belong to this pole's report unless overridden
+                evt_report_id = event.get("report_id") or (
+                    report_id if evt_type == dbm.HistoryEventType.COMMENT else None
+                )
+                _upsert(
+                    db,
+                    dbm.PoleHistoryEvent,
+                    event["id"],
+                    {
+                        "id": event["id"],
+                        "pole_id": pole.id,
+                        "report_id": evt_report_id,
+                        "type": evt_type,
+                        "title": event["title"],
+                        "event_date": _parse_dt(event.get("event_date")),
+                        "author_user_id": event.get("author_user_id"),
+                        "description": event.get("description"),
+                        "comment": event.get("comment"),
+                        "severity": event.get("severity"),
+                        "pin_color": event["pin_color"],
+                    },
+                )
+                all_events += 1
+
+        db.flush()
+
+        # ── 7. Dynamically-selected OSM reports (spread across the city) ───────
+        osm_report_rows = _osm_report_rows()
+        for report_id, pole_id, title, severity, user_id, submitted_at, location in osm_report_rows:
             _promote_pole_for_report(db, pole_id, severity, title)
             _upsert(
                 db,
@@ -478,51 +656,39 @@ def seed_dashboard_data() -> None:
                 },
             )
 
-        db.flush()
-
-        for photo_id, pole_id, report_id, label, severity, severity_label in PHOTOS:
+        osm_history = _osm_history_events(osm_report_rows)
+        for event in osm_history:
             _upsert(
                 db,
-                dbm.FieldPhoto,
-                photo_id,
+                dbm.PoleHistoryEvent,
+                event["id"],
                 {
-                    "id": photo_id,
-                    "pole_id": pole_id,
-                    "report_id": report_id,
-                    "label": label,
-                    "severity": severity,
-                    "severity_label": severity_label,
+                    "id": event["id"],
+                    "pole_id": event["pole_id"],
+                    "report_id": event.get("report_id"),
+                    "type": event["type"],
+                    "title": event["title"],
+                    "event_date": _parse_dt(event.get("event_date")),
+                    "author_user_id": event.get("author_user_id"),
+                    "description": event.get("description"),
+                    "comment": event.get("comment"),
+                    "severity": event.get("severity"),
+                    "pin_color": event["pin_color"],
                 },
             )
-
-        history_events = [*HISTORY_EVENTS, *_osm_history_events(osm_report_rows)]
-        for event in history_events:
-            values = {
-                "id": event["id"],
-                "pole_id": event["pole_id"],
-                "report_id": event.get("report_id"),
-                "type": event["type"],
-                "title": event["title"],
-                "event_date": _parse_dt(event.get("event_date")),
-                "author_user_id": event.get("author_user_id"),
-                "description": event.get("description"),
-                "comment": event.get("comment"),
-                "severity": event.get("severity"),
-                "pin_color": event["pin_color"],
-            }
-            _upsert(db, dbm.PoleHistoryEvent, values["id"], values)
 
         db.commit()
 
         print(
             {
-            "users_seeded": len(USERS),
-            "poles_seeded": len(POLES) + len(MAP_ONLY_POLES) + osm_poles_inserted,
-            "osm_poles_inserted": osm_poles_inserted,
-            "osm_poles_updated": osm_poles_updated,
-            "reports_seeded": len(report_rows),
-            "photos_seeded": len(PHOTOS),
-            "history_events_seeded": len(history_events),
+                "users_seeded": len(USERS),
+                "osm_poles_inserted": osm_poles_inserted,
+                "osm_poles_updated": osm_poles_updated,
+                "detailed_targets_resolved": len(resolved_targets),
+                "map_only_targets": len(MAP_ONLY_TARGETS),
+                "reports_seeded": all_reports + len(osm_report_rows),
+                "photos_seeded": all_photos,
+                "history_events_seeded": all_events + len(osm_history),
             }
         )
 

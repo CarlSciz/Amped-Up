@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { CapturedPhoto, GpsCoords, SubmitReportPayload } from '../../types/submission';
 
 interface ReviewStepProps {
@@ -7,6 +7,7 @@ interface ReviewStepProps {
   location: GpsCoords | null;
   description: string;
   onDescriptionChange: (v: string) => void;
+  onPhotoReplace: (index: number, photo: CapturedPhoto) => void;
   onBack: () => void;
   onSubmit: (payload: SubmitReportPayload) => Promise<void>;
 }
@@ -17,11 +18,31 @@ export function ReviewStep({
   location,
   description,
   onDescriptionChange,
+  onPhotoReplace,
   onBack,
   onSubmit,
 }: ReviewStepProps) {
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const [replacingPhotoIndex, setReplacingPhotoIndex] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function handleReplaceUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || replacingPhotoIndex === null) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      onPhotoReplace(replacingPhotoIndex, {
+        id: crypto.randomUUID(),
+        dataUrl,
+        label: photos[replacingPhotoIndex]?.label ?? '',
+      });
+    };
+    reader.readAsDataURL(file);
+    setReplacingPhotoIndex(null);
+    e.target.value = '';
+  }
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -63,9 +84,21 @@ export function ReviewStep({
         <section className="sub-section">
           <h3 className="sub-section-label">Photos ({photos.length})</h3>
           <div className="sub-review-photos">
-            {photos.map((p) => (
+            {photos.map((p, i) => (
               <div key={p.id} className="sub-review-photo">
-                <img src={p.dataUrl} alt={p.label} />
+                <div className="sub-review-photo-img-wrap">
+                  <img src={p.dataUrl} alt={p.label} />
+                  <button
+                    className="sub-review-photo-replace"
+                    aria-label={`Replace ${p.label} photo`}
+                    onClick={() => { setReplacingPhotoIndex(i); replaceInputRef.current?.click(); }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                  </button>
+                </div>
                 <span className="sub-review-photo-lbl">{p.label}</span>
               </div>
             ))}
@@ -123,6 +156,9 @@ export function ReviewStep({
         </section>
 
         {error && <p className="sub-error">{error}</p>}
+
+        {/* capture="environment" forces the camera on mobile — no gallery picker for guest users */}
+        <input ref={replaceInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleReplaceUpload} />
 
         <button
           className="sub-submit-btn"

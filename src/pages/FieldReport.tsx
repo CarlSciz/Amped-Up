@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FieldCaptureStep } from '../components/fieldreport/FieldCaptureStep';
-import { FieldReviewStep, FieldReportPayload } from '../components/fieldreport/FieldReviewStep';
+import { FieldReviewStep, FieldReportPayload, PoleMetadata } from '../components/fieldreport/FieldReviewStep';
+import { FieldReportWide } from '../components/fieldreport/FieldReportWide';
 import { CapturedPhoto, GpsCoords } from '../types/submission';
 import { randomPoleId } from '../utils/randomPole';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 import '../submission.css';
 import '../field-report.css';
 
@@ -22,21 +24,55 @@ export function FieldReport() {
   const [defaultPoleId, setDefaultPoleId] = useState(
     () => new URLSearchParams(window.location.search).get('pole') ?? randomPoleId(),
   );
+
+  const windowWidth = useWindowWidth();
+  const isWide = windowWidth >= 1024;
+  const nearestFetchedRef = useRef(false);
   const [step, setStep] = useState<'capture' | 'review'>('capture');
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
   const [location, setLocation] = useState<GpsCoords | null>(null);
+  const [defaultPoleMetadata, setDefaultPoleMetadata] = useState<PoleMetadata | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [submittedPoleId, setSubmittedPoleId] = useState('');
   const [submittedSeverity, setSubmittedSeverity] = useState('');
   const [submittedPhotoCount, setSubmittedPhotoCount] = useState(0);
 
+  // Auto-resolve nearest pole when GPS first locks (mobile flow only)
+  useEffect(() => {
+    if (!location || nearestFetchedRef.current || isWide) return;
+    nearestFetchedRef.current = true;
+    fetch(`${DASHBOARD_API}/nearest-pole?lat=${location.lat}&lon=${location.lon}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { pole_id: string; classification?: string; owner?: string; circuit?: string; address?: string } | null) => {
+        if (!data?.pole_id) return;
+        setDefaultPoleId(data.pole_id);
+        setDefaultPoleMetadata({
+          classification: data.classification ?? undefined,
+          owner:          data.owner          ?? undefined,
+          circuit:        data.circuit        ?? undefined,
+          address:        data.address        ?? undefined,
+        });
+      })
+      .catch(() => {});
+  }, [location, isWide]);
+
   function handlePhotoCapture(photo: CapturedPhoto) {
     setPhotos((prev) => [...prev, photo]);
+  }
+
+  function handlePhotoReplace(index: number, photo: CapturedPhoto) {
+    setPhotos((prev) => {
+      const next = [...prev];
+      next[index] = photo;
+      return next;
+    });
   }
 
   function resetForAnotherReport() {
     const routePoleId = new URLSearchParams(window.location.search).get('pole');
     setDefaultPoleId(routePoleId ?? randomPoleId());
+    setDefaultPoleMetadata(null);
+    nearestFetchedRef.current = false;
     setStep('capture');
     setPhotos([]);
     setLocation(null);
@@ -58,6 +94,16 @@ export function FieldReport() {
     setSubmittedSeverity(payload.severity);
     setSubmittedPhotoCount(payload.photo_count);
     setSubmitted(true);
+  }
+
+  /* ── Wide layout (tablet / desktop) ── */
+  if (isWide && !submitted) {
+    return (
+      <FieldReportWide
+        poleId={defaultPoleId}
+        onSubmit={handleSubmit}
+      />
+    );
   }
 
   if (submitted) {
@@ -97,6 +143,7 @@ export function FieldReport() {
         photos={photos}
         location={location}
         onPhotoCapture={handlePhotoCapture}
+        onPhotoReplace={handlePhotoReplace}
         onLocationUpdate={setLocation}
         onContinue={() => setStep('review')}
       />
@@ -106,8 +153,10 @@ export function FieldReport() {
   return (
     <FieldReviewStep
       poleId={defaultPoleId}
+      poleMetadata={defaultPoleMetadata}
       photos={photos}
       location={location}
+      onPhotoReplace={handlePhotoReplace}
       onBack={() => setStep('capture')}
       onSubmit={handleSubmit}
     />

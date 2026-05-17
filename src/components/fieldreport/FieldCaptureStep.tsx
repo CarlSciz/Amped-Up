@@ -12,6 +12,7 @@ interface FieldCaptureStepProps {
   photos: CapturedPhoto[];
   location: GpsCoords | null;
   onPhotoCapture: (photo: CapturedPhoto) => void;
+  onPhotoReplace: (index: number, photo: CapturedPhoto) => void;
   onLocationUpdate: (coords: GpsCoords) => void;
   onContinue: () => void;
 }
@@ -21,6 +22,7 @@ export function FieldCaptureStep({
   photos,
   location,
   onPhotoCapture,
+  onPhotoReplace,
   onLocationUpdate,
   onContinue,
 }: FieldCaptureStepProps) {
@@ -28,8 +30,12 @@ export function FieldCaptureStep({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const [replacingSlotIndex, setReplacingSlotIndex] = useState<number | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [gpsStatus, setGpsStatus] = useState<'pending' | 'locked' | 'error'>('pending');
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
@@ -44,6 +50,7 @@ export function FieldCaptureStep({
       streamRef.current?.getTracks().forEach((t) => t.stop());
       setCameraReady(false);
       setCameraError(null);
+      setPermissionDenied(false);
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode, width: { ideal: 1280 }, height: { ideal: 960 } },
@@ -53,8 +60,14 @@ export function FieldCaptureStep({
         streamRef.current = stream;
         if (videoRef.current) videoRef.current.srcObject = stream;
         setCameraReady(true);
-      } catch {
-        if (active) setCameraError('Camera unavailable — use Upload instead.');
+      } catch (err) {
+        if (!active) return;
+        const denied = err instanceof DOMException &&
+          (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
+        setPermissionDenied(denied);
+        setCameraError(denied
+          ? 'Camera access was denied.'
+          : 'Camera unavailable — use Upload instead.');
       }
     }
     start();
@@ -62,7 +75,7 @@ export function FieldCaptureStep({
       active = false;
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-  }, [facingMode]);
+  }, [facingMode, retryCount]);
 
   // GPS watch
   useEffect(() => {
@@ -88,6 +101,23 @@ export function FieldCaptureStep({
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     const slot = PHOTO_SLOTS[activeSlotIndex];
     onPhotoCapture({ id: crypto.randomUUID(), dataUrl, label: slot.shortLabel });
+  }
+
+  function handleReplaceUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || replacingSlotIndex === null) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      onPhotoReplace(replacingSlotIndex, {
+        id: crypto.randomUUID(),
+        dataUrl,
+        label: PHOTO_SLOTS[replacingSlotIndex].shortLabel,
+      });
+    };
+    reader.readAsDataURL(file);
+    setReplacingSlotIndex(null);
+    e.target.value = '';
   }
 
   function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -133,7 +163,20 @@ export function FieldCaptureStep({
               <circle cx="12" cy="13" r="4" />
             </svg>
             <p>{cameraError}</p>
-            <button className="sub-cap-btn" style={{ width: 'auto', borderRadius: 10, padding: '10px 20px', fontSize: 13 }} onClick={() => fileInputRef.current?.click()}>
+            {permissionDenied && (
+              <button
+                className="sub-cap-btn"
+                style={{ width: 'auto', borderRadius: 10, padding: '10px 20px', fontSize: 13, background: '#1D4ED8', outline: '2px solid #1D4ED8', color: '#fff' }}
+                onClick={() => setRetryCount(c => c + 1)}
+              >
+                Request camera access
+              </button>
+            )}
+            <button
+              className="sub-cap-btn"
+              style={{ width: 'auto', borderRadius: 10, padding: '10px 20px', fontSize: 13 }}
+              onClick={() => fileInputRef.current?.click()}
+            >
               Upload photos
             </button>
           </div>
@@ -229,7 +272,12 @@ export function FieldCaptureStep({
             const taken = i < photos.length;
             const active = i === activeSlotIndex && !allTaken;
             return (
-              <div key={slot.shortLabel} className={`sub-slot${taken ? ' done' : active ? ' active' : ''}`}>
+              <div
+                key={slot.shortLabel}
+                className={`sub-slot${taken ? ' done' : active ? ' active' : ''}`}
+                onClick={taken ? () => { setReplacingSlotIndex(i); replaceInputRef.current?.click(); } : undefined}
+                title={taken ? `Tap to replace ${slot.shortLabel}` : undefined}
+              >
                 {taken ? (
                   <img src={photos[i].dataUrl} alt={slot.shortLabel} className="sub-slot-thumb" />
                 ) : active ? (
@@ -314,6 +362,7 @@ export function FieldCaptureStep({
       </div>
 
       <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleUpload} />
+      <input ref={replaceInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleReplaceUpload} />
       <canvas ref={canvasRef} style={{ display: 'none' }} />
     </div>
   );

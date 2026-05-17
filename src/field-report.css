@@ -292,6 +292,28 @@
 }
 .fr-photo-remove:hover { background: rgba(239, 68, 68, 0.8); color: #fff; }
 
+/* Replace button overlay (bottom-right of each thumbnail, visible on hover) */
+.fr-photo-replace {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(7, 11, 22, 0.85);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94A3B8;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+.fr-photo-thumb:hover .fr-photo-replace { opacity: 1; }
+.fr-photo-replace:hover { background: rgba(59, 130, 246, 0.9); color: #fff; }
+
 /* Photo overlay tag (top-right corner of each thumbnail) */
 .fr-photo-tag {
   position: absolute;
@@ -583,3 +605,640 @@
   transition: background 0.15s;
 }
 .fr-done-btn:hover { background: #1F2937; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Wide layout — tablet (≥1024 px) and desktop (≥1280 px)
+   All classes prefixed .frw-*
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Root container ──────────────────────────────────────────────── */
+/* Tablet: fixed overlay covers full viewport regardless of body padding */
+.frw-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #070B16;
+  color: #E5E7EB;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow: hidden;
+  z-index: 10;
+}
+
+/* Desktop (≥1280 px): flow naturally in the page, no fixed overlay */
+.frw-screen.frw-desktop {
+  position: static;
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+  z-index: auto;
+}
+
+/* ── Top nav (desktop only) ──────────────────────────────────────── */
+.frw-topnav {
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #1E293B;
+  flex-shrink: 0;
+}
+
+.frw-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.frw-logo-mark {
+  width: 34px;
+  height: 34px;
+  background: #1E293B;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.frw-logo-name {
+  color: #F9FAFB;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* ── Tablet header ───────────────────────────────────────────────── */
+.frw-hdr {
+  padding: 13px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #1E293B;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+/* ── Desktop page heading ────────────────────────────────────────── */
+.frw-desktop-head {
+  padding: 20px 32px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+
+/* ── Two-panel body ──────────────────────────────────────────────── */
+.frw-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.frw-screen.frw-desktop .frw-body {
+  overflow: visible;
+  flex: none;
+  padding: 16px 32px 32px;
+  gap: 24px;
+  display: flex;
+}
+
+/* ── Left panel ──────────────────────────────────────────────────── */
+.frw-left {
+  flex: 1.35;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+  border-right: 1px solid #1E293B;
+  min-width: 0;
+}
+
+.frw-screen.frw-desktop .frw-left {
+  border-right: none;
+  padding: 0;
+  gap: 20px;
+}
+
+/* ── Right panel ─────────────────────────────────────────────────── */
+.frw-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 14px;
+  background: #0B1020;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-width: 0;
+}
+
+.frw-screen.frw-desktop .frw-right {
+  overflow-y: visible;
+  background: transparent;
+  padding: 0;
+}
+
+/* ── Camera viewfinder ───────────────────────────────────────────── */
+.frw-viewfinder {
+  flex: 1;
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0F172A;
+  border: 1px solid #1E293B;
+  min-height: 0;
+}
+
+.frw-viewfinder video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.frw-cam-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #94A3B8;
+  font-size: 13px;
+  text-align: center;
+  padding: 24px;
+}
+
+.frw-gps-stack {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.frw-pole-tag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  pointer-events: none;
+}
+
+.frw-tip-overlay {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  background: rgba(30, 58, 95, 0.72);
+  border: 1px solid #1E40AF;
+  color: #BFDBFE;
+  font-size: 12.5px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.45;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+/* ── Chip (GPS / pole tag) ───────────────────────────────────────── */
+.frw-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid #1E293B;
+  color: #CBD5E1;
+  font-size: 11.5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.frw-chip.live {
+  color: #86EFAC;
+  border-color: #14532D;
+}
+
+.frw-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22C55E;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+  animation: frw-pulse-kf 1.6s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes frw-pulse-kf {
+  0%   { box-shadow: 0 0 0 0   rgba(34, 197, 94, 0.6); }
+  70%  { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0   rgba(34, 197, 94, 0); }
+}
+
+/* ── Capture row (slot strip + shutter) ──────────────────────────── */
+.frw-capture-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.frw-slots-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  flex: 1;
+}
+
+.frw-slot {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: #111827;
+  border: 1px dashed #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  position: relative;
+  overflow: hidden;
+}
+
+.frw-slot.done  { border: 1px solid #14532D; background: #052E1A; cursor: pointer; }
+.frw-slot.done:hover { border-color: #60A5FA; }
+.frw-slot.active { border: 1px solid #FBBF24; color: #FBBF24; }
+
+.frw-slot-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+}
+
+.frw-slot-num {
+  position: absolute;
+  left: 5px;
+  top: 4px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: rgba(7, 11, 22, 0.85);
+  color: #E5E7EB;
+  font-size: 10px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.frw-slot.done  .frw-slot-num { background: #14532D; color: #86EFAC; }
+.frw-slot.active .frw-slot-num { background: #451A03; color: #FBBF24; }
+
+.frw-slot-lbl {
+  position: absolute;
+  left: 5px;
+  bottom: 4px;
+  font-size: 9.5px;
+  color: #CBD5E1;
+  background: rgba(7, 11, 22, 0.85);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 500;
+  z-index: 2;
+}
+
+.frw-slot.active .frw-slot-lbl { color: #FBBF24; }
+
+.frw-slot-violation {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #000;
+  z-index: 3;
+  max-width: 65%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Shutter button ──────────────────────────────────────────────── */
+.frw-cap-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #FBBF24;
+  border: 5px solid rgba(251, 191, 36, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #451A03;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px #070B16 inset;
+  transition: opacity 0.12s;
+}
+
+.frw-cap-btn:disabled { opacity: 0.45; cursor: default; }
+.frw-cap-btn.done { background: #065F46; color: #86EFAC; border-color: rgba(6, 95, 70, 0.3); }
+
+/* ── Desktop: upload drop zones ──────────────────────────────────── */
+.frw-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.frw-drop-zone {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  background: #0F172A;
+  border: 2px dashed #334155;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #64748B;
+  gap: 5px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.frw-drop-zone:hover:not(.filled) {
+  border-color: #3B82F6;
+  background: #0E1B36;
+  color: #93C5FD;
+}
+
+.frw-drop-zone.filled {
+  border: 1px solid #14532D;
+  background: #052E1A;
+  cursor: pointer;
+}
+
+.frw-drop-zone.filled:hover {
+  border-color: #3B82F6;
+}
+
+.frw-drop-num {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(7, 11, 22, 0.85);
+  color: #E5E7EB;
+  font-size: 10px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.frw-drop-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #CBD5E1;
+}
+
+.frw-drop-hint {
+  font-size: 10.5px;
+  color: #64748B;
+}
+
+/* ── Desktop: location map + address ─────────────────────────────── */
+.frw-map-card {
+  background: #070B16;
+  border: 1px solid #1F2937;
+  border-radius: 12px;
+  overflow: hidden;
+  height: 190px;
+}
+
+.frw-addr-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 10px;
+  align-items: center;
+}
+
+.frw-addr-input {
+  background: #0F172A;
+  border: 1px solid #1E293B;
+  border-radius: 10px;
+  padding: 10px 13px;
+  color: #E5E7EB;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+
+.frw-addr-input:focus { border-color: #3B82F6; }
+.frw-addr-input::placeholder { color: #475569; }
+
+/* ── Form inputs shared across right panel ───────────────────────── */
+.frw-input {
+  background: #0F172A;
+  border: 1px solid #1E293B;
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: #E5E7EB;
+  font-family: inherit;
+  font-size: 12.5px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.frw-input:focus { border-color: #3B82F6; }
+.frw-input::placeholder { color: #475569; }
+
+.frw-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.frw-mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; }
+
+/* ── Right panel cards / atoms ───────────────────────────────────── */
+.frw-card {
+  background: #111827;
+  border: 1px solid #1F2937;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.frw-section-label {
+  font-size: 10.5px;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.frw-loc-card {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.frw-loc-mini-map {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  background: #070B16;
+  flex-shrink: 0;
+}
+
+/* ── AI suggestion card ──────────────────────────────────────────── */
+.frw-ai-card {
+  background: #1E3A5F;
+  border: 1px solid #1E40AF;
+  border-radius: 12px;
+  padding: 12px;
+  color: #BFDBFE;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.frw-ai-hd {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  color: #DBEAFE;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+/* ── Severity buttons ────────────────────────────────────────────── */
+.frw-sev-row {
+  display: flex;
+  gap: 6px;
+}
+
+.frw-sev-btn {
+  flex: 1;
+  padding: 9px 4px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 500;
+  border: 1px solid #1E293B;
+  background: #0F172A;
+  color: #CBD5E1;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.frw-sev-btn:hover { background: #1F2937; }
+
+/* ── Desktop pole ID + reporter grid ─────────────────────────────── */
+.frw-pole-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ── Description textarea ────────────────────────────────────────── */
+.frw-note {
+  width: 100%;
+  background: #0F172A;
+  border: 1px solid #1E293B;
+  border-radius: 10px;
+  padding: 11px 13px;
+  color: #E5E7EB;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+  height: 90px;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.frw-note:focus { border-color: #3B82F6; }
+.frw-note::placeholder { color: #374151; }
+
+/* ── Actions row ─────────────────────────────────────────────────── */
+.frw-action-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.frw-submit {
+  background: #065F46;
+  color: #D1FAE5;
+  border: 1px solid #047857;
+  border-radius: 10px;
+  padding: 13px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
+  transition: opacity 0.12s;
+}
+
+.frw-submit:hover:not(:disabled) { opacity: 0.88; }
+.frw-submit:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Shared icon button ──────────────────────────────────────────── */
+.frw-ico-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #1E293B;
+  border: 1px solid #1F2937;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #E5E7EB;
+  cursor: pointer;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+
+.frw-ico-btn:hover { background: #273548; }
+.frw-ico-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* ── Section h3 reset ─────────────────────────────────────────────── */
+.frw-h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #F9FAFB;
+  letter-spacing: -0.1px;
+}

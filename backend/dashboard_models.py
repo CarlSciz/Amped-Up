@@ -44,7 +44,7 @@ class User(BaseModel):
 
 class DashboardSummary(BaseModel):
     total_poles: int
-    new_since_last_scan: int
+    recent_criticals: int
     critical: int
     high: int
     medium: int
